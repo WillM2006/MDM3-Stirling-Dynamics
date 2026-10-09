@@ -1,0 +1,68 @@
+<div id="single-jonswap-component">
+  <h3>One frequency · one direction · one wave component</h3>
+  <div class="viz-row text-small tabular-nums" style="gap:16px">
+    <span>Period: 10 s</span><span>Direction: 90° (+y)</span><span>Wavelength: 156.1 m</span>
+  </div>
+  <div class="viz-row text-small tabular-nums" style="gap:16px;margin-top:8px">
+    <span>JONSWAP output S(0.628): <span data-spectrum></span> m²/(rad/s)</span>
+    <span>Component amplitude: <span data-amplitude></span> m</span>
+  </div>
+  <canvas data-surface role="img" aria-label="A single sinusoidal surface with straight crests parallel to x, travelling along positive y" style="width:100%;height:320px;display:block;margin-top:8px"></canvas>
+  <div class="text-small">Side view along y (identical at every x)</div>
+  <canvas data-slice role="img" aria-label="Elevation against y for the same single wave component" style="width:100%;height:155px;display:block"></canvas>
+  <label class="form-label" for="single-wave-time">Time: <span data-time class="tabular-nums">0.0</span> s</label>
+  <input id="single-wave-time" class="form-range" type="range" min="0" max="10" step="0.1" value="0" aria-label="Time in seconds">
+  <div class="sr-only" aria-live="polite" data-status></div>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('single-jonswap-component');
+  const surf = root.querySelector('[data-surface]');
+  const slice = root.querySelector('[data-slice]');
+  const slider = root.querySelector('input');
+  const omega = 2*Math.PI/10, g=9.81, gamma=3.3, Hs=4;
+  const dw=(4-.1)/(150-1), k=omega*omega/g;
+  const alpha=(5/16)*(Hs*Hs*Math.pow(omega,4)/(g*g))/(.065*Math.pow(gamma,.803)+.135);
+  const S=alpha*g*g/Math.pow(omega,5)*Math.exp(-1.25)*gamma;
+  const A=Math.sqrt(2*S*dw);
+  root.querySelector('[data-spectrum]').textContent=S.toFixed(2);
+  root.querySelector('[data-amplitude]').textContent=A.toFixed(2);
+  let time=0;
+  const saved=window.openai?.widgetState;
+  if(saved?.modelContent && Number.isFinite(saved.modelContent.time)) time=Math.min(10,Math.max(0,saved.modelContent.time));
+  slider.value=time;
+  function colors(){const s=getComputedStyle(root);return {fg:s.getPropertyValue('--foreground').trim(), grid:s.getPropertyValue('--border').trim(), wave:s.getPropertyValue('--viz-series-1').trim()};}
+  function prepare(canvas,h){const w=canvas.getBoundingClientRect().width;const ratio=window.devicePixelRatio||1;canvas.width=w*ratio;canvas.height=h*ratio;const c=canvas.getContext('2d');c.scale(ratio,ratio);c.font='12px sans-serif';return {c,w,h};}
+  function draw(){
+    const col=colors();
+    root.querySelector('[data-time]').textContent=time.toFixed(1);
+    const {c,w,h}=prepare(surf,320);
+    const scale=Math.min((w-36)/2.1,145), cy=157;
+    function project(x,y,z){return [w/2+scale*(.65*x+.4*y),cy+scale*(.19*x-.32*y)-z*43/A];}
+    const height=y=>A*Math.cos(k*y*160-omega*time);
+    function line(points,color,width){c.beginPath();points.forEach((p,i)=>i?c.lineTo(...p):c.moveTo(...p));c.strokeStyle=color;c.lineWidth=width;c.stroke();}
+    // Surface lines: y profiles at several x; straight crests across x.
+    for(let ix=0;ix<=12;ix++){const x=-1+ix/6;const p=[];for(let iy=0;iy<=100;iy++){const y=-1+iy/50;p.push(project(x,y,height(y)));}line(p,col.wave,1.2);}
+    for(let iy=0;iy<=40;iy++){const y=-1+iy/20;line([project(-1,y,height(y)),project(1,y,height(y))],col.wave,.8);}
+    line([project(-1,-1,-A*1.6),project(1,-1,-A*1.6)],col.grid,1);
+    line([project(1,-1,-A*1.6),project(1,1,-A*1.6)],col.grid,1);
+    c.fillStyle=col.fg;c.textAlign='center';let p=project(0,-1,-A*2.1);c.fillText('x (m) — uniform across x',p[0],p[1]);
+    p=project(1,0,-A*2.1);c.textAlign='right';c.fillText('y (m) →',Math.min(w-8,p[0]+58),p[1]);
+    c.textAlign='left';c.fillText('Elevation (m)',8,20);c.fillText('Vertical scale enlarged',8,38);
+    const q=prepare(slice,155),ctx=q.c,W=q.w,H=q.h;
+    const left=62,right=W-16,top=16,bottom=115;
+    const px=y=>left+(y+160)/320*(right-left),py=z=>bottom-(z+A*1.25)/(A*2.5)*(bottom-top);
+    ctx.strokeStyle=col.grid;ctx.lineWidth=1;ctx.strokeRect(left,top,right-left,bottom-top);
+    ctx.fillStyle=col.fg;ctx.textAlign='right';[[-A,'−'+A.toFixed(2)],[0,'0'],[A,A.toFixed(2)]].forEach(([z,t])=>ctx.fillText(t,left-8,py(z)+4));
+    ctx.textAlign='center';[-150,0,150].forEach(y=>ctx.fillText(String(y),px(y),bottom+18));ctx.fillText('y (m)',(left+right)/2,H-3);
+    ctx.save();ctx.translate(13,(top+bottom)/2);ctx.rotate(-Math.PI/2);ctx.fillText('Elevation (m)',0,0);ctx.restore();
+    ctx.beginPath();for(let i=0;i<=200;i++){let y=-160+320*i/200,z=A*Math.cos(k*y-omega*time);i?ctx.lineTo(px(y),py(z)):ctx.moveTo(px(y),py(z));}ctx.strokeStyle=col.wave;ctx.lineWidth=2;ctx.stroke();
+  }
+  slider.addEventListener('input',()=>{time=Number(slider.value);draw();});
+  slider.addEventListener('change',()=>{root.querySelector('[data-status]').textContent='Time '+time.toFixed(1)+' seconds';window.openai?.setWidgetState({modelContent:{time,frequencyRadPerSecond:omega,directionDegrees:90,components:1},privateContent:null}).catch(()=>{});});
+  window.addEventListener('openai:set_globals',e=>{const state=e.detail?.globals?.widgetState?.modelContent;if(state && Number.isFinite(state.time)){time=Math.min(10,Math.max(0,state.time));slider.value=time;draw();}});
+  new ResizeObserver(draw).observe(root);
+  new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['class','style','data-theme']});
+  draw();
+})();
+</script>
