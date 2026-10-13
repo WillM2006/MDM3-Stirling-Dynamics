@@ -4,14 +4,7 @@ import matplotlib.pyplot as plt
 import time 
 
 # change var idkname
-"""
-One problem in your sea.py for long sensor records: 
-your frequencies are evenly spaced (Δf ≈ 0.0097 Hz), 
-so the simulated sea repeats itself every 1/Δf ≈ 103 s. 
-A 20-minute sensor record would be the same 100 seconds repeated 12 times, 
-which ruins the spectrum estimate in the reverse step. To fix it, 
-add a small random offset to each frequency within its bin, or use many more frequencies.
-"""
+
 
 
 class Sea():
