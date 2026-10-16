@@ -1,0 +1,50 @@
+
+
+***********************************************
+
+
+---------------------------------------
+CFD WAVEMAKER v3.7.13
+---------------------------------------
+working directory: /Users/karandama/Documents/Codex/2026-10-14/task-2/mdm3-estimator-handover/pressure-surface-estimator/work/cfd-adapter-check
+----------
+Wave type:
+----------
+Irregular perturbation wave theory specified
+-------------------
+General input data:
+-------------------
+Water depth: 1000m
+Water density rho set to: 1025kg/m^3
+Gravity set to: 9.81m/s^2
+Normalize wave amplitudes by spectral zeroth moment: false
+Amplify (gain): 1m
+--------------------------
+Irregular input data:
+--------------------------
+Linear wave theory used with exponential extrapolation above z=swl.
+Irregular seas, one directional component for each frequency specified
+Number of frequency components: 2
+# OMEGA[rad/s]    A[m]      Phase[rad]    Theta[rad]
+0.78539816339744828 0.5 0.29999999999999999 0.52000000000000002
+1.1309733552923256 0.20000000000000001 -0.69999999999999996 -0.41999999999999998
+
+-----------------------------------------------
+Input file read successfully.
+***********************************************
+
+
+Wavetype: 1
+----------------------------------------------------------------
+Spectral parameters computed from specified spectral components:
+
+Spectral moments m0: 0.125, m1: 0.0981748, m2: 0.0771063
+Significant Wave height Hs (m):1.41421
+Mean period Tz (sec, from m0 and m2):8
+Mean period Tm:(sec, from m0 and m1)8
+Spectral peak period (sec):8
+Mean phase speed (m/s, based on Tm):12.4905
+----------------------------------------------------------------
+irregorder: 0
+WaveID: 1
+{"package_surface_two_tone_phase_direction_convention": "passed", "package_pressure_density_units_depth_attenuation": "passed", "arbitrary_component_force_matches_existing_strip_law": "passed", "maximum_surface_discrepancy_m": 3.608224830031759e-16, "maximum_pressure_discrepancy_Pa": 1.1823431123048067e-11}

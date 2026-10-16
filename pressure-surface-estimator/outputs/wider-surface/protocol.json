@@ -1,0 +1,86 @@
+{
+  "test": "space",
+  "source_sha256": {
+    "hybrid_pressure_live.py": "8d87c40eb676e3e896af1e7264fc425b9da8325ed0fdb57479df8ef9cf450b33",
+    "pressure_prior.py": "3cf9cee492f9279100cbbbfc8688ff12a2230b05fdf64b4b3bab76b45f4058f6",
+    "pressure_only_live.py": "0ca30f80afefe963425a259e905687c4c62f664e7d0dcad92faba5e426ce1029",
+    "pressure_array.py": "074a9b240489cfd5a6f33074c630bf88223cbfbf7502979e117ac635c4a98c39",
+    "submarine.py": "280ad27db4b49f8e640c8ce716471049bc124e848b3a08f1723634cbda568ede",
+    "time_domain.py": "0399b7b10a40cffe17f9df1c16278a2211a61a3df4a403f8170ba10831b7e9f8",
+    "sea.py": "bb166f30d1b728b45767d59349e2bb10fbd049b671a47ea23ae98277aa20a9b7"
+  },
+  "noise_std_Pa": 0,
+  "case_records": [
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "pressure_sha256": "dfeda07cb9f504d4f9e77eb25c49b65ee575d31f66e6a4acacf2bb9db7b650a4",
+      "waveinput_sha256": "8b99bd03b0ba9c887fe9a9d40e170b384def04eaa85bd419e302e16fb8515549"
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "pressure_sha256": "2f73480818db7192c8e89fbd638de72407d7c7d9ac8c85144dc4d9b56751bb28",
+      "waveinput_sha256": "ef7e7711171609cee9b2c6932e7f37417c23de1b2870e781b3801cd048c0607b"
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "pressure_sha256": "5fc5d5b33a8bf5c22815e4d3380805c483915a14a4e301c41237964f8e982bce",
+      "waveinput_sha256": "2cf0f9fa158be6e8d08444ee332a674164fa2d43803f54e4cf6a01ac42720b14"
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "pressure_sha256": "afc333e249dfda19a61f884dc4480e0b8d90272eb7cd303628c07142f40dc71f",
+      "waveinput_sha256": "eecd6fb7fde3729acb633beb16270c27089581725d4bb632dcaf71fe9eeb9455"
+    }
+  ],
+  "independence": "Native CFDwavemaker linear Airy wave source, existing shared known hull/instrument approximations; not nonlinear CFD or real measurements",
+  "comparison": "Paired existing four realizations; exploratory envelope mapping, not fresh held-out sea validation",
+  "inverse": "Unchanged 128-tap causal pressure-only FIR, ridge=1e-8, uniform directional mixture=.01, gamma fixed3.3, initial 1024 pressure packets only for prior learning",
+  "score": "All7169 samples from packet1024 onward; current timestamp; no phase/time alignment or truth rescaling",
+  "fs_Hz": 2,
+  "centre_depth_m": 15,
+  "reference_offset_s": 400,
+  "metrics": "R2=1-SSE/sum((truth-local_time_mean)^2); spatial pooling sums pointwise denominators, no per-frame normalization",
+  "prespecified_depths_m": [
+    15,
+    30,
+    45,
+    60,
+    80,
+    100,
+    150
+  ],
+  "prespecified_centred_rectangles_m": [
+    [
+      60,
+      12
+    ],
+    [
+      80,
+      20
+    ],
+    [
+      100,
+      40
+    ],
+    [
+      140,
+      60
+    ],
+    [
+      200,
+      100
+    ],
+    [
+      300,
+      150
+    ]
+  ],
+  "spatial_grid": "5m spacing over x[-150,150], y[-75,75]; original 403-point 60x12 grid scored separately",
+  "depth_patch_m": [
+    60,
+    12
+  ],
+  "depth_grid_points": 403,
+  "depth_calibration": "Nominal known hull/port depth supplied separately at each depth; prior relearned from that depth's pressures. Same sea phases/amplitudes across depths.",
+  "interpretation": "No universal depth cutoff; frozen estimator and chosen seas only. Numerical regularization remains active even without sensor noise."
+}

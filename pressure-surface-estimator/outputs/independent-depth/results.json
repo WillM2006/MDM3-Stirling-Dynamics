@@ -1,0 +1,1323 @@
+{
+  "protocol": {
+    "test": "depth",
+    "source_sha256": {
+      "hybrid_pressure_live.py": "8d87c40eb676e3e896af1e7264fc425b9da8325ed0fdb57479df8ef9cf450b33",
+      "pressure_prior.py": "3cf9cee492f9279100cbbbfc8688ff12a2230b05fdf64b4b3bab76b45f4058f6",
+      "pressure_only_live.py": "0ca30f80afefe963425a259e905687c4c62f664e7d0dcad92faba5e426ce1029",
+      "pressure_array.py": "074a9b240489cfd5a6f33074c630bf88223cbfbf7502979e117ac635c4a98c39",
+      "submarine.py": "280ad27db4b49f8e640c8ce716471049bc124e848b3a08f1723634cbda568ede",
+      "time_domain.py": "0399b7b10a40cffe17f9df1c16278a2211a61a3df4a403f8170ba10831b7e9f8",
+      "sea.py": "bb166f30d1b728b45767d59349e2bb10fbd049b671a47ea23ae98277aa20a9b7"
+    },
+    "noise_std_Pa": 0,
+    "case_records": [
+      {
+        "case": "gaussian_single_peak_seed731927",
+        "pressure_sha256": "dfeda07cb9f504d4f9e77eb25c49b65ee575d31f66e6a4acacf2bb9db7b650a4",
+        "waveinput_sha256": "8b99bd03b0ba9c887fe9a9d40e170b384def04eaa85bd419e302e16fb8515549"
+      },
+      {
+        "case": "gaussian_single_peak_seed731928",
+        "pressure_sha256": "2f73480818db7192c8e89fbd638de72407d7c7d9ac8c85144dc4d9b56751bb28",
+        "waveinput_sha256": "ef7e7711171609cee9b2c6932e7f37417c23de1b2870e781b3801cd048c0607b"
+      },
+      {
+        "case": "upstream_single_system_seed731927",
+        "pressure_sha256": "5fc5d5b33a8bf5c22815e4d3380805c483915a14a4e301c41237964f8e982bce",
+        "waveinput_sha256": "2cf0f9fa158be6e8d08444ee332a674164fa2d43803f54e4cf6a01ac42720b14"
+      },
+      {
+        "case": "upstream_single_system_seed731928",
+        "pressure_sha256": "afc333e249dfda19a61f884dc4480e0b8d90272eb7cd303628c07142f40dc71f",
+        "waveinput_sha256": "eecd6fb7fde3729acb633beb16270c27089581725d4bb632dcaf71fe9eeb9455"
+      }
+    ],
+    "independence": "Native CFDwavemaker linear Airy wave source, existing shared known hull/instrument approximations; not nonlinear CFD or real measurements",
+    "comparison": "Paired existing four realizations; exploratory envelope mapping, not fresh held-out sea validation",
+    "inverse": "Unchanged 128-tap causal pressure-only FIR, ridge=1e-8, uniform directional mixture=.01, gamma fixed3.3, initial 1024 pressure packets only for prior learning",
+    "score": "All7169 samples from packet1024 onward; current timestamp; no phase/time alignment or truth rescaling",
+    "fs_Hz": 2,
+    "centre_depth_m": 15,
+    "reference_offset_s": 400,
+    "metrics": "R2=1-SSE/sum((truth-local_time_mean)^2); spatial pooling sums pointwise denominators, no per-frame normalization",
+    "prespecified_depths_m": [
+      15,
+      30,
+      45,
+      60,
+      80,
+      100,
+      150
+    ],
+    "prespecified_centred_rectangles_m": [
+      [
+        60,
+        12
+      ],
+      [
+        80,
+        20
+      ],
+      [
+        100,
+        40
+      ],
+      [
+        140,
+        60
+      ],
+      [
+        200,
+        100
+      ],
+      [
+        300,
+        150
+      ]
+    ],
+    "spatial_grid": "5m spacing over x[-150,150], y[-75,75]; original 403-point 60x12 grid scored separately",
+    "depth_patch_m": [
+      60,
+      12
+    ],
+    "depth_grid_points": 403,
+    "depth_calibration": "Nominal known hull/port depth supplied separately at each depth; prior relearned from that depth's pressures. Same sea phases/amplitudes across depths.",
+    "interpretation": "No universal depth cutoff; frozen estimator and chosen seas only. Numerical regularization remains active even without sensor noise."
+  },
+  "runs": [
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "centre_depth_m": 15,
+      "pooled_R2": 0.9973929693973178,
+      "minimum_point_R2": 0.990207665625863,
+      "median_point_R2": 0.9978959252725697,
+      "pooled_RMSE_m": 0.025607354515696245,
+      "maximum_point_RMSE_m": 0.04932190064451751,
+      "learned_prior": {
+        "mean_direction_deg": 30.179283416715553,
+        "spread_s": 14.597589443201509,
+        "Hs_m": 1.3992680864678402,
+        "Tp_s": 8.295062365397703,
+        "gamma": 3.3,
+        "objective": -3.1588938720701205,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 87,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        1811.3371001029016,
+        1459.6820409165641,
+        1452.1690536887545,
+        1120.428008707702,
+        1554.0204378903738,
+        447.9458531477663
+      ],
+      "elapsed_s": 0.1559309579897672
+    },
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "centre_depth_m": 30,
+      "pooled_R2": 0.9968345071119166,
+      "minimum_point_R2": 0.9898109093302314,
+      "median_point_R2": 0.997128947939328,
+      "pooled_RMSE_m": 0.02821709631006855,
+      "maximum_point_RMSE_m": 0.050311168034604066,
+      "learned_prior": {
+        "mean_direction_deg": 25.220480505087075,
+        "spread_s": 13.612222005799772,
+        "Hs_m": 1.4015767757277366,
+        "Tp_s": 8.285657340022896,
+        "gamma": 3.3,
+        "objective": -3.8398892097489123,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        710.9498344757552,
+        547.7571533817227,
+        644.5751885342999,
+        471.0564158914448,
+        594.1271407160457,
+        165.54276096366652
+      ],
+      "elapsed_s": 4.591984166065231
+    },
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "centre_depth_m": 45,
+      "pooled_R2": 0.995343035605145,
+      "minimum_point_R2": 0.9853209983859497,
+      "median_point_R2": 0.9960463159594585,
+      "pooled_RMSE_m": 0.03422497252696482,
+      "maximum_point_RMSE_m": 0.06038720734452972,
+      "learned_prior": {
+        "mean_direction_deg": 25.53154149810653,
+        "spread_s": 15.393942465649385,
+        "Hs_m": 1.4033922050063925,
+        "Tp_s": 8.280748593688786,
+        "gamma": 3.3,
+        "objective": -2.563980920005803,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        307.4216295344105,
+        226.271748485291,
+        308.39026071752494,
+        219.7065913271576,
+        253.19343009003376,
+        70.05070049761264
+      ],
+      "elapsed_s": 4.327025790931657
+    },
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "centre_depth_m": 60,
+      "pooled_R2": 0.9897729066272944,
+      "minimum_point_R2": 0.9706646960545895,
+      "median_point_R2": 0.9896199965781568,
+      "pooled_RMSE_m": 0.05071865872721126,
+      "maximum_point_RMSE_m": 0.08536738591193643,
+      "learned_prior": {
+        "mean_direction_deg": 28.3257142603742,
+        "spread_s": 21.899085992890374,
+        "Hs_m": 1.5136082226760181,
+        "Tp_s": 8.203901580232424,
+        "gamma": 3.3,
+        "objective": -1.4949181371342526,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        143.84709920155038,
+        101.3418259728771,
+        154.67634594423254,
+        109.91758806988194,
+        117.67819921974997,
+        33.16813547807107
+      ],
+      "elapsed_s": 4.422296582954004
+    },
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "centre_depth_m": 80,
+      "pooled_R2": 0.9707265053095386,
+      "minimum_point_R2": 0.9397600369646654,
+      "median_point_R2": 0.9735481556104993,
+      "pooled_RMSE_m": 0.0858082283571347,
+      "maximum_point_RMSE_m": 0.12233170675836487,
+      "learned_prior": {
+        "mean_direction_deg": 28.00380105987627,
+        "spread_s": 19.871455366821873,
+        "Hs_m": 2.4164742159652204,
+        "Tp_s": 8.06271149842897,
+        "gamma": 3.3,
+        "objective": -0.7394374579062871,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        57.436804133094064,
+        38.396049307571815,
+        64.67202598317503,
+        46.8863723004022,
+        46.90783845042838,
+        13.859728247274294
+      ],
+      "elapsed_s": 4.35205716593191
+    },
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "centre_depth_m": 100,
+      "pooled_R2": 0.9178399914810444,
+      "minimum_point_R2": 0.8674187754803908,
+      "median_point_R2": 0.9274200598278787,
+      "pooled_RMSE_m": 0.14375464524162698,
+      "maximum_point_RMSE_m": 0.18148373122012038,
+      "learned_prior": {
+        "mean_direction_deg": 27.2376206216198,
+        "spread_s": 18.460196866232202,
+        "Hs_m": 2.8752369728441294,
+        "Tp_s": 8.067054550890564,
+        "gamma": 3.3,
+        "objective": -0.5227388601437019,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        24.834125641875904,
+        15.88165432932855,
+        28.10322842557124,
+        21.12056872481925,
+        20.335633102363495,
+        6.341005009410759
+      ],
+      "elapsed_s": 4.339734917040914
+    },
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "centre_depth_m": 150,
+      "pooled_R2": 0.5705694516546804,
+      "minimum_point_R2": 0.4928890939980357,
+      "median_point_R2": 0.563659443991934,
+      "pooled_RMSE_m": 0.3286533906795144,
+      "maximum_point_RMSE_m": 0.3558752808413031,
+      "learned_prior": {
+        "mean_direction_deg": 27.960568190158355,
+        "spread_s": 20.30155073253574,
+        "Hs_m": 4.329932146961013,
+        "Tp_s": 7.570892370640151,
+        "gamma": 3.3,
+        "objective": 0.3590736321058483,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        3.7877251369771017,
+        2.2415848439038486,
+        3.932666790323121,
+        3.327817194624072,
+        3.1386769212212275,
+        1.0957230910420428
+      ],
+      "elapsed_s": 4.341320249950513
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "centre_depth_m": 15,
+      "pooled_R2": 0.9975051922146625,
+      "minimum_point_R2": 0.9911944484262807,
+      "median_point_R2": 0.9980591713569952,
+      "pooled_RMSE_m": 0.024916500621610348,
+      "maximum_point_RMSE_m": 0.04707714656572489,
+      "learned_prior": {
+        "mean_direction_deg": 28.049873629846164,
+        "spread_s": 13.186829482435058,
+        "Hs_m": 1.6916614091223907,
+        "Tp_s": 7.9326392198421525,
+        "gamma": 3.3,
+        "objective": -3.2777804713769236,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 88,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        1822.0853365426658,
+        1476.3882511010959,
+        1449.0977549630463,
+        1098.0044918118758,
+        1562.593082118271,
+        459.0629664928655
+      ],
+      "elapsed_s": 0.15910749998874962
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "centre_depth_m": 30,
+      "pooled_R2": 0.9974086427379623,
+      "minimum_point_R2": 0.9917075716347009,
+      "median_point_R2": 0.9977313773229872,
+      "pooled_RMSE_m": 0.0253940604300614,
+      "maximum_point_RMSE_m": 0.04568490364778808,
+      "learned_prior": {
+        "mean_direction_deg": 23.99950695023106,
+        "spread_s": 9.74102166726448,
+        "Hs_m": 1.6975072417066412,
+        "Tp_s": 7.920518393763659,
+        "gamma": 3.3,
+        "objective": -4.168067598199741,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        715.3952961973599,
+        554.7934921822559,
+        638.719034057127,
+        460.25162188443534,
+        598.1178840541083,
+        170.59395377166024
+      ],
+      "elapsed_s": 4.662946166936308
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "centre_depth_m": 45,
+      "pooled_R2": 0.9960269582746228,
+      "minimum_point_R2": 0.9884231124867856,
+      "median_point_R2": 0.9967314967777695,
+      "pooled_RMSE_m": 0.03144344093045311,
+      "maximum_point_RMSE_m": 0.053979363068661114,
+      "learned_prior": {
+        "mean_direction_deg": 22.091859211464445,
+        "spread_s": 9.871656585605868,
+        "Hs_m": 1.7019625232712527,
+        "Tp_s": 7.912005970376984,
+        "gamma": 3.3,
+        "objective": -3.0062135364958618,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        308.95630663572643,
+        229.00686142786424,
+        303.8702351349601,
+        214.89903779833034,
+        254.72294971519457,
+        72.18582655460314
+      ],
+      "elapsed_s": 4.315359917003661
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "centre_depth_m": 60,
+      "pooled_R2": 0.9915792701218573,
+      "minimum_point_R2": 0.9771173019481786,
+      "median_point_R2": 0.9918668886427375,
+      "pooled_RMSE_m": 0.04577658292869928,
+      "maximum_point_RMSE_m": 0.07589015921925578,
+      "learned_prior": {
+        "mean_direction_deg": 24.706924800143348,
+        "spread_s": 12.961620667603318,
+        "Hs_m": 1.7130866778894778,
+        "Tp_s": 7.897944764976992,
+        "gamma": 3.3,
+        "objective": -1.8951841282022215,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        144.2220586668302,
+        102.32115726589913,
+        151.92313655798065,
+        107.99604554133879,
+        118.22381735687888,
+        34.06177255272158
+      ],
+      "elapsed_s": 4.29330129083246
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "centre_depth_m": 80,
+      "pooled_R2": 0.9734793841601325,
+      "minimum_point_R2": 0.9450773770232205,
+      "median_point_R2": 0.9772922491733421,
+      "pooled_RMSE_m": 0.08123820242959474,
+      "maximum_point_RMSE_m": 0.1175729686465955,
+      "learned_prior": {
+        "mean_direction_deg": 24.456633218673204,
+        "spread_s": 11.33803618609017,
+        "Hs_m": 1.8406826612954188,
+        "Tp_s": 7.782701754613491,
+        "gamma": 3.3,
+        "objective": -1.0213777517177687,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        57.34444044719274,
+        38.57884605760463,
+        63.469098075380565,
+        46.456082431009406,
+        47.04228715106407,
+        14.165074533431092
+      ],
+      "elapsed_s": 4.344469124916941
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "centre_depth_m": 100,
+      "pooled_R2": 0.9214996725609554,
+      "minimum_point_R2": 0.8712713969926484,
+      "median_point_R2": 0.9331363416991095,
+      "pooled_RMSE_m": 0.13976686917468584,
+      "maximum_point_RMSE_m": 0.18093954519141486,
+      "learned_prior": {
+        "mean_direction_deg": 26.200201766621294,
+        "spread_s": 10.841680694037874,
+        "Hs_m": 1.99309161570983,
+        "Tp_s": 7.6724243078979875,
+        "gamma": 3.3,
+        "objective": -0.5588359058283568,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        24.682673830732227,
+        15.868460236329625,
+        27.63463684777318,
+        21.108455387178214,
+        20.373868381460863,
+        6.465146372189959
+      ],
+      "elapsed_s": 4.319399999920279
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "centre_depth_m": 150,
+      "pooled_R2": 0.5656410842742021,
+      "minimum_point_R2": 0.4993549221076462,
+      "median_point_R2": 0.553910263408382,
+      "pooled_RMSE_m": 0.32877052334316664,
+      "maximum_point_RMSE_m": 0.35757749779541464,
+      "learned_prior": {
+        "mean_direction_deg": 33.695367247650765,
+        "spread_s": 14.888977993148334,
+        "Hs_m": 2.4022521144449547,
+        "Tp_s": 7.447936739294615,
+        "gamma": 3.3,
+        "objective": 0.08068508779374287,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        3.7299901167046556,
+        2.214471614121758,
+        3.9046080025566905,
+        3.381367027115527,
+        3.145204572879474,
+        1.1175781022671771
+      ],
+      "elapsed_s": 4.410227708052844
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "centre_depth_m": 15,
+      "pooled_R2": 0.9949454469964992,
+      "minimum_point_R2": 0.9723860757320821,
+      "median_point_R2": 0.9957414203606908,
+      "pooled_RMSE_m": 0.03553977551904416,
+      "maximum_point_RMSE_m": 0.0826543082212954,
+      "learned_prior": {
+        "mean_direction_deg": 29.86445121109674,
+        "spread_s": 13.199661324459946,
+        "Hs_m": 1.929188588781318,
+        "Tp_s": 7.724580748696043,
+        "gamma": 3.3,
+        "objective": -0.4645413506045286,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        1672.9184854263628,
+        1373.4693712444953,
+        1256.83623416401,
+        1010.6574254718536,
+        1499.0727789113237,
+        430.81672255618673
+      ],
+      "elapsed_s": 0.157613875111565
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "centre_depth_m": 30,
+      "pooled_R2": 0.9818469774564532,
+      "minimum_point_R2": 0.9538643634848145,
+      "median_point_R2": 0.9812285833207166,
+      "pooled_RMSE_m": 0.06735157814130867,
+      "maximum_point_RMSE_m": 0.10683650912833101,
+      "learned_prior": {
+        "mean_direction_deg": 29.694451931772182,
+        "spread_s": 13.027077625199878,
+        "Hs_m": 1.9382925538176332,
+        "Tp_s": 7.683713427410878,
+        "gamma": 3.3,
+        "objective": -0.4968847588390058,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        623.7761078742653,
+        491.2709233803728,
+        519.9004152675213,
+        390.7254312213036,
+        526.8085544245025,
+        145.55887146014265
+      ],
+      "elapsed_s": 4.580781957833096
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "centre_depth_m": 45,
+      "pooled_R2": 0.9449659999147553,
+      "minimum_point_R2": 0.9063750788987165,
+      "median_point_R2": 0.9471172945091941,
+      "pooled_RMSE_m": 0.11727051783820837,
+      "maximum_point_RMSE_m": 0.15219387090024133,
+      "learned_prior": {
+        "mean_direction_deg": 29.697607856451754,
+        "spread_s": 13.143995880175785,
+        "Hs_m": 1.950261034059254,
+        "Tp_s": 7.648034359336192,
+        "gamma": 3.3,
+        "objective": -0.5100759297703813,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        256.84461535915153,
+        194.6530422933269,
+        237.69031837146693,
+        171.98791249620757,
+        212.62680568428698,
+        57.620721868800516
+      ],
+      "elapsed_s": 4.360705874860287
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "centre_depth_m": 60,
+      "pooled_R2": 0.8953834499961469,
+      "minimum_point_R2": 0.8470805955138689,
+      "median_point_R2": 0.8998744727716144,
+      "pooled_RMSE_m": 0.16168640311037896,
+      "maximum_point_RMSE_m": 0.19450587772812705,
+      "learned_prior": {
+        "mean_direction_deg": 29.664740425505222,
+        "spread_s": 14.376581269459214,
+        "Hs_m": 2.0029010958784563,
+        "Tp_s": 7.603243478096623,
+        "gamma": 3.3,
+        "objective": -0.43436222416355263,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        114.06830540730995,
+        83.1328595903832,
+        115.21452606104013,
+        82.10874314386096,
+        93.58226239650826,
+        25.540647671485896
+      ],
+      "elapsed_s": 4.360387500142679
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "centre_depth_m": 80,
+      "pooled_R2": 0.8125791407528569,
+      "minimum_point_R2": 0.7608219219568555,
+      "median_point_R2": 0.8193595433184725,
+      "pooled_RMSE_m": 0.21641246166896755,
+      "maximum_point_RMSE_m": 0.243255190864223,
+      "learned_prior": {
+        "mean_direction_deg": 28.99457864158368,
+        "spread_s": 16.521568485990656,
+        "Hs_m": 2.823912586127488,
+        "Tp_s": 7.485945802458546,
+        "gamma": 3.3,
+        "objective": -0.16500149721238894,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        42.68482615100561,
+        29.512824317134545,
+        46.62877785263698,
+        33.43420270538247,
+        34.86186666893551,
+        9.890411742437381
+      ],
+      "elapsed_s": 4.366126917069778
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "centre_depth_m": 100,
+      "pooled_R2": 0.7285360771904418,
+      "minimum_point_R2": 0.6745851051906913,
+      "median_point_R2": 0.7404741381948508,
+      "pooled_RMSE_m": 0.2604529993650985,
+      "maximum_point_RMSE_m": 0.2837397256016747,
+      "learned_prior": {
+        "mean_direction_deg": 28.56537669843838,
+        "spread_s": 17.843522078122792,
+        "Hs_m": 3.59958757327385,
+        "Tp_s": 7.4049050289966765,
+        "gamma": 3.3,
+        "objective": 0.03892254764256327,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        17.534491326758328,
+        11.542792474682434,
+        19.815756166282895,
+        14.586655878699386,
+        14.328019094986905,
+        4.287050258864784
+      ],
+      "elapsed_s": 4.391038917005062
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "centre_depth_m": 150,
+      "pooled_R2": 0.4218400258363809,
+      "minimum_point_R2": 0.3504952016026791,
+      "median_point_R2": 0.412558542799086,
+      "pooled_RMSE_m": 0.3800995136954795,
+      "maximum_point_RMSE_m": 0.40178400988114366,
+      "learned_prior": {
+        "mean_direction_deg": 28.411583903361926,
+        "spread_s": 19.54041327589911,
+        "Hs_m": 4.7433122179682865,
+        "Tp_s": 7.219741129696544,
+        "gamma": 3.3,
+        "objective": 0.531718732701585,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        2.4794479159051295,
+        1.493311557085805,
+        2.675711180426348,
+        2.1885026299624415,
+        2.046298926093941,
+        0.6909848554241186
+      ],
+      "elapsed_s": 4.685752916848287
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "centre_depth_m": 15,
+      "pooled_R2": 0.9953182632724311,
+      "minimum_point_R2": 0.9738718373165367,
+      "median_point_R2": 0.9961155101302118,
+      "pooled_RMSE_m": 0.03435689209707919,
+      "maximum_point_RMSE_m": 0.08163261216749067,
+      "learned_prior": {
+        "mean_direction_deg": 29.02009938073934,
+        "spread_s": 12.05226543283005,
+        "Hs_m": 1.9611355469355718,
+        "Tp_s": 7.515146632261614,
+        "gamma": 3.3,
+        "objective": -0.5751310920892556,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        1680.9042906798418,
+        1386.7488656258943,
+        1261.9646467869684,
+        993.7908353028132,
+        1504.0808066227742,
+        440.2439724422742
+      ],
+      "elapsed_s": 0.16197958402335644
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "centre_depth_m": 30,
+      "pooled_R2": 0.9824769532702906,
+      "minimum_point_R2": 0.9552228033612358,
+      "median_point_R2": 0.9821024351411004,
+      "pooled_RMSE_m": 0.06646839414817829,
+      "maximum_point_RMSE_m": 0.10686554578521781,
+      "learned_prior": {
+        "mean_direction_deg": 28.7590342816937,
+        "spread_s": 11.986933216201885,
+        "Hs_m": 1.9714224537941707,
+        "Tp_s": 7.4987359492781485,
+        "gamma": 3.3,
+        "objective": -0.6079852174860056,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        627.4655430745111,
+        497.4343973076067,
+        519.1849537055887,
+        382.44693884759107,
+        530.0921413836639,
+        150.28782849578502
+      ],
+      "elapsed_s": 4.651789957890287
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "centre_depth_m": 45,
+      "pooled_R2": 0.9449608467247201,
+      "minimum_point_R2": 0.9080512936364828,
+      "median_point_R2": 0.9473997669401826,
+      "pooled_RMSE_m": 0.11780025999716397,
+      "maximum_point_RMSE_m": 0.15313768225460972,
+      "learned_prior": {
+        "mean_direction_deg": 28.58003047094456,
+        "spread_s": 11.93183996278377,
+        "Hs_m": 1.9803174987523644,
+        "Tp_s": 7.485773968149331,
+        "gamma": 3.3,
+        "objective": -0.631297785651798,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        258.1660638780675,
+        197.07241144564964,
+        235.7683351045263,
+        168.11375777170403,
+        213.95159932177825,
+        59.64587480356451
+      ],
+      "elapsed_s": 4.61676475009881
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "centre_depth_m": 60,
+      "pooled_R2": 0.8950239762643191,
+      "minimum_point_R2": 0.8494395144573847,
+      "median_point_R2": 0.89962430090908,
+      "pooled_RMSE_m": 0.16268796855223022,
+      "maximum_point_RMSE_m": 0.1959587955038507,
+      "learned_prior": {
+        "mean_direction_deg": 28.808985834461517,
+        "spread_s": 12.349283502451412,
+        "Hs_m": 1.985102098292562,
+        "Tp_s": 7.474922114130024,
+        "gamma": 3.3,
+        "objective": -0.5910947726976449,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        114.46460076621757,
+        84.02575665678091,
+        113.69902212302345,
+        80.45130743744055,
+        94.06293368388803,
+        26.370595291466888
+      ],
+      "elapsed_s": 4.3754030000418425
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "centre_depth_m": 80,
+      "pooled_R2": 0.8111775564243969,
+      "minimum_point_R2": 0.7637737309851074,
+      "median_point_R2": 0.8171521987417331,
+      "pooled_RMSE_m": 0.21819117635179325,
+      "maximum_point_RMSE_m": 0.24545583087886583,
+      "learned_prior": {
+        "mean_direction_deg": 28.754617084392585,
+        "spread_s": 12.839563826595413,
+        "Hs_m": 2.00734981859938,
+        "Tp_s": 7.43160734407308,
+        "gamma": 3.3,
+        "objective": -0.45849411560241904,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        42.700101243934,
+        29.71768704363514,
+        45.86951050976682,
+        32.993618928919055,
+        34.98746004212787,
+        10.152143625444875
+      ],
+      "elapsed_s": 4.375075250165537
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "centre_depth_m": 100,
+      "pooled_R2": 0.7258579395830554,
+      "minimum_point_R2": 0.6763774798694195,
+      "median_point_R2": 0.7374250588273892,
+      "pooled_RMSE_m": 0.2629046171135148,
+      "maximum_point_RMSE_m": 0.2872953691576599,
+      "learned_prior": {
+        "mean_direction_deg": 30.457545530588867,
+        "spread_s": 13.236384771185968,
+        "Hs_m": 1.961351841673884,
+        "Tp_s": 7.401397280716942,
+        "gamma": 3.3,
+        "objective": -0.420601705614474,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        17.47704329579535,
+        11.567522034657301,
+        19.50118376710185,
+        14.5188952684411,
+        14.36782496127315,
+        4.3824528502268825
+      ],
+      "elapsed_s": 4.32862454187125
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "centre_depth_m": 150,
+      "pooled_R2": 0.4304187110004888,
+      "minimum_point_R2": 0.3693885672550148,
+      "median_point_R2": 0.420430035385455,
+      "pooled_RMSE_m": 0.37895551691109747,
+      "maximum_point_RMSE_m": 0.40273713188832094,
+      "learned_prior": {
+        "mean_direction_deg": 34.367705618999715,
+        "spread_s": 14.200732875544405,
+        "Hs_m": 2.0996787097055716,
+        "Tp_s": 7.268534298954102,
+        "gamma": 3.3,
+        "objective": -0.11636873812972445,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "pressure_dynamic_std_Pa": [
+        2.4517795574774763,
+        1.4807689347779445,
+        2.6566180168433844,
+        2.2176281748763103,
+        2.0543267964000553,
+        0.7058191633851151
+      ],
+      "elapsed_s": 4.342753416160122
+    }
+  ],
+  "frozen_method_and_original_pressure_integrity_pass": true
+}

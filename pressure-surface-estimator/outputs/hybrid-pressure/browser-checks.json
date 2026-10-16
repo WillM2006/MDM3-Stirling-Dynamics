@@ -1,0 +1,12 @@
+{
+  "worker_vs_python_max_abs_error_m": 1.9206858326015208e-14,
+  "frames_compared": 10,
+  "truth_toggle_does_not_affect_output": true,
+  "startup_replayed": true,
+  "one_sample_control": true,
+  "one_x_playback": true,
+  "desktop_width_px": 1340,
+  "mobile_width_px": 390,
+  "mobile_horizontal_overflow": false,
+  "page_errors": []
+}

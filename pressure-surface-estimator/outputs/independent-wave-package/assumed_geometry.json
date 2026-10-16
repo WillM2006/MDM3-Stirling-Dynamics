@@ -1,0 +1,49 @@
+{
+  "positions_m": [
+    [
+      35.0,
+      0.0,
+      0.0
+    ],
+    [
+      -35.0,
+      0.0,
+      0.0
+    ],
+    [
+      0.0,
+      5.0,
+      0.0
+    ],
+    [
+      0.0,
+      -5.0,
+      0.0
+    ],
+    [
+      0.0,
+      0.0,
+      5.0
+    ],
+    [
+      0.0,
+      0.0,
+      -5.0
+    ]
+  ],
+  "names": [
+    "bow",
+    "stern",
+    "port",
+    "starboard",
+    "top",
+    "bottom"
+  ],
+  "imu_position_m": [
+    10.0,
+    0.0,
+    0.0
+  ],
+  "placement_status": "User-authorized symmetric modelling assumption; six-sensor count confirmed, actual hardware coordinates unverified",
+  "coordinate_convention": "+x along hull, +z up, origin geometric hull centre"
+}

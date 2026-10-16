@@ -1,0 +1,24 @@
+{
+  "checks": [
+    {
+      "case": "upstream_single_system",
+      "streamed_frames_compared": 10,
+      "worker_python_max_abs_error_m": 3.985700658404312e-14,
+      "reference_visibility_independent": true,
+      "one_x_playback": true,
+      "mobile_overflow": false
+    },
+    {
+      "case": "gaussian_single_peak",
+      "streamed_frames_compared": 10,
+      "worker_python_max_abs_error_m": 3.097522238704187e-14,
+      "reference_visibility_independent": true,
+      "one_x_playback": true,
+      "mobile_overflow": false
+    }
+  ],
+  "case_navigation": true,
+  "desktop_width_px": 1340,
+  "mobile_width_px": 390,
+  "page_errors": []
+}

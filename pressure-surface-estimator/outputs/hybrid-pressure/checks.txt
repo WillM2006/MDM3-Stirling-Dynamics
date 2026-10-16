@@ -1,0 +1,19 @@
+test_directional_prior_normalization_and_uniform_mixture (hybrid_pressure_checks.HybridChecks.test_directional_prior_normalization_and_uniform_mixture) ... ok
+test_extra_channels_and_time_order_rejected_during_learning (hybrid_pressure_checks.HybridChecks.test_extra_channels_and_time_order_rejected_during_learning) ... ok
+test_learning_and_phase_reconstruction_use_only_received_packets (hybrid_pressure_checks.HybridChecks.test_learning_and_phase_reconstruction_use_only_received_packets) ... ok
+test_pressure_fit_handles_finite_window_and_constant_port_offsets (hybrid_pressure_checks.HybridChecks.test_pressure_fit_handles_finite_window_and_constant_port_offsets) ... ok
+test_exact_past_only_convolution_and_startup (pressure_only_live_checks.LiveChecks.test_exact_past_only_convolution_and_startup) ... ok
+test_future_packets_cannot_change_previous_outputs (pressure_only_live_checks.LiveChecks.test_future_packets_cannot_change_previous_outputs) ... ok
+test_physics_calibration_is_phase_blind_and_rejects_DC (pressure_only_live_checks.LiveChecks.test_physics_calibration_is_phase_blind_and_rejects_DC) ... ok
+test_reject_IMU_extra_columns_and_bad_time (pressure_only_live_checks.LiveChecks.test_reject_IMU_extra_columns_and_bad_time) ... ok
+test_joint_inverse_recovers_observable_mode_with_phase (pressure_array_checks.ArrayChecks.test_joint_inverse_recovers_observable_mode_with_phase) ... ok
+test_matches_existing_single_port_response (pressure_array_checks.ArrayChecks.test_matches_existing_single_port_response) ... ok
+test_non_JONSWAP_multitone_with_heave_roll_pitch (pressure_array_checks.ArrayChecks.test_non_JONSWAP_multitone_with_heave_roll_pitch) ... ok
+test_requires_six_explicit_distinct_positions_and_provenance (pressure_array_checks.ArrayChecks.test_requires_six_explicit_distinct_positions_and_provenance) ... ok
+test_time_forward_and_spectral_array_agree (pressure_array_checks.ArrayChecks.test_time_forward_and_spectral_array_agree) ... ok
+test_wave_interpolator_reproduces_port_values_and_phase (pressure_array_checks.ArrayChecks.test_wave_interpolator_reproduces_port_values_and_phase) ... ok
+
+----------------------------------------------------------------------
+Ran 14 tests in 1.459s
+
+OK
