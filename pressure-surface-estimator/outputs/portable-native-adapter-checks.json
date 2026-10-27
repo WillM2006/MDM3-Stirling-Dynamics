@@ -1,0 +1,7 @@
+{
+  "package_surface_two_tone_phase_direction_convention": "passed",
+  "package_pressure_density_units_depth_attenuation": "passed",
+  "arbitrary_component_force_matches_existing_strip_law": "passed",
+  "maximum_surface_discrepancy_m": 3.608224830031759e-16,
+  "maximum_pressure_discrepancy_Pa": 1.1823431123048067e-11
+}

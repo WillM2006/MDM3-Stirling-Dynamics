@@ -1,0 +1,48 @@
+{
+  "goal": "Best current-time actual wave-field estimate from six pressures; quantify depth dependence",
+  "benchmark_patch_m": [
+    60,
+    12
+  ],
+  "footprint_status": "Comparison benchmark, not a limit on research",
+  "crossing_seas": false,
+  "depths_m": [
+    15,
+    30,
+    60
+  ],
+  "fresh_seeds": [
+    424243,
+    424244
+  ],
+  "pressure_noise_std_Pa": [
+    0,
+    1
+  ],
+  "noise_status": "Hypothetical independent white pressure noise; not a sensor specification",
+  "learner_samples": 1024,
+  "learner_duration_s": 511.5,
+  "fir_taps": 128,
+  "ridge_m2": 1e-08,
+  "uniform_fraction": 0.01,
+  "estimator_input": "Timestamp + six absolute pressures, known hull/pressure calibration at the stated depth",
+  "prior_source": "Learned only from first 1024 pressure packets; gamma=3.3 and separable JONSWAP/cos-2s family assumed",
+  "validation": "Only first 1024 packets used for prior learning. Score subsequent samples; whole generated frequency band, no truth phase alignment or rescaling",
+  "evaluation_sea_only": {
+    "Hs_m": 2,
+    "Tp_s": 8,
+    "mean_direction_deg": 30,
+    "spread_s": 10,
+    "gamma": 3.3
+  },
+  "source_sha256": {
+    "hybrid_pressure_live.py": "8d87c40eb676e3e896af1e7264fc425b9da8325ed0fdb57479df8ef9cf450b33",
+    "pressure_prior.py": "3cf9cee492f9279100cbbbfc8688ff12a2230b05fdf64b4b3bab76b45f4058f6",
+    "pressure_only_live.py": "0ca30f80afefe963425a259e905687c4c62f664e7d0dcad92faba5e426ce1029",
+    "pressure_array.py": "074a9b240489cfd5a6f33074c630bf88223cbfbf7502979e117ac635c4a98c39",
+    "submarine.py": "280ad27db4b49f8e640c8ce716471049bc124e848b3a08f1723634cbda568ede",
+    "time_domain.py": "0399b7b10a40cffe17f9df1c16278a2211a61a3df4a403f8170ba10831b7e9f8",
+    "sea.py": "bb166f30d1b728b45767d59349e2bb10fbd049b671a47ea23ae98277aa20a9b7"
+  },
+  "known_limit": "This prior learner does not fit a noise covariance; noisy/deep runs are stress tests, not claims of a noise-optimal estimator"
+}

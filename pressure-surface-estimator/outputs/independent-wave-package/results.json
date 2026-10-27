@@ -1,0 +1,283 @@
+{
+  "protocol": {
+    "external_package": "CFDwavemaker",
+    "version": "3.7.13",
+    "git_commit": "23c66197488d680c8c1b96d8aa9e023fefa361ba",
+    "package_url": "https://github.com/oystelan/CFDwavemaker",
+    "upstream_component_asset": "tests/t008_3D_irregular_sea/waveinput_linear.dat",
+    "upstream_asset_sha256": "e19198229d84bcd1450afedb05e5cb89d16f5a8f33adfae81ebf15058b73df74",
+    "package_local_patch": "Guard unused omp.h include with _OPENMP for serial macOS build; no wave equations changed",
+    "native_library_sha256": "7515e516b525bcc3d46c6cb84096d10038a944eb6843d42b804fac1d1f865076",
+    "native_bulk_wrapper_sha256": "97567815fdf1d8c6fdf3474fd90d6269f67306023fc20fd148ed53e65a24ada1",
+    "source_sha256": {
+      "hybrid_pressure_live.py": "8d87c40eb676e3e896af1e7264fc425b9da8325ed0fdb57479df8ef9cf450b33",
+      "pressure_prior.py": "3cf9cee492f9279100cbbbfc8688ff12a2230b05fdf64b4b3bab76b45f4058f6",
+      "pressure_only_live.py": "0ca30f80afefe963425a259e905687c4c62f664e7d0dcad92faba5e426ce1029",
+      "pressure_array.py": "074a9b240489cfd5a6f33074c630bf88223cbfbf7502979e117ac635c4a98c39",
+      "submarine.py": "280ad27db4b49f8e640c8ce716471049bc124e848b3a08f1723634cbda568ede",
+      "time_domain.py": "0399b7b10a40cffe17f9df1c16278a2211a61a3df4a403f8170ba10831b7e9f8",
+      "sea.py": "bb166f30d1b728b45767d59349e2bb10fbd049b671a47ea23ae98277aa20a9b7"
+    },
+    "frozen_against_previous_hybrid": true,
+    "adapter_sha256": "89d4a7610464d5fa46fa4a1e564e633557a5957d37f697b00f280540c56ed358",
+    "surface_and_incident_pressure": "Native CFDwavemaker API at every evaluation sample; no sea.Sea or truth_at synthesis",
+    "wave_theory": "Linear finite-depth Airy at 1000 m water depth, effectively deep for generated periods",
+    "shared_assumptions": [
+      "Known capsule strip-force law, mass/added mass/damping/restoring matrices",
+      "RK4 time-domain vehicle dynamics from rest, first-order moving-port hydrostatic correction",
+      "Linear potential wave theory, no wave-hull scattering or forward speed"
+    ],
+    "tests": [
+      "upstream_single_system",
+      "gaussian_single_peak"
+    ],
+    "phase_seeds": [
+      731927,
+      731928
+    ],
+    "phase_design": "Two fresh independent uniform-phase draws; same draws paired across spectral shapes",
+    "input_transformations": "312 upstream frequencies/directions, rotate directions +30 deg, normalize component variance to prescribed Hs=2 m; Gaussian case replaces amplitudes only",
+    "gaussian_generation_only": {
+      "peak_Hz": 0.125,
+      "sigma_Hz": 0.018
+    },
+    "surface_patch_m": [
+      60,
+      12
+    ],
+    "grid_points": 403,
+    "submarine_centre_depth_m": 15,
+    "pressure_noise_std_Pa": 0,
+    "crossing_seas": false,
+    "fs_Hz": 2,
+    "record_samples": 8192,
+    "forward_dt_s": 0.1,
+    "forward_settle_s": 400,
+    "learning_samples": 1024,
+    "score": "Current timestamp; all generated frequencies; all samples from packet 1024 onward; no rescaling, phase alignment or time shift",
+    "limits": "Independent wave/incident-pressure implementation only; same linear theory and existing known hull/sensor approximations. Not nonlinear CFD or real-sea validation."
+  },
+  "runs": [
+    {
+      "case": "upstream_single_system",
+      "phase_seed": 731927,
+      "hybrid": {
+        "pooled_R2": 0.9949454469964992,
+        "minimum_point_R2": 0.9723860757320821,
+        "median_point_R2": 0.9957414203606908,
+        "pooled_RMSE_m": 0.03553977551904416,
+        "maximum_point_RMSE_m": 0.0826543082212954
+      },
+      "flat_prior_same_samples": {
+        "pooled_R2": 0.8669538059950146,
+        "minimum_point_R2": 0.6070543431818494,
+        "median_point_R2": 0.8925467408678711,
+        "pooled_RMSE_m": 0.18233688473206752,
+        "maximum_point_RMSE_m": 0.3141655330575723
+      },
+      "learned_prior": {
+        "mean_direction_deg": 29.86445121109674,
+        "spread_s": 13.199661324459946,
+        "Hs_m": 1.929188588781318,
+        "Tp_s": 7.724580748696043,
+        "gamma": 3.3,
+        "objective": -0.4645413506045286,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "startup_compute_s": 2.639030790887773,
+      "ongoing_compute_ms_median": 0.064125,
+      "ongoing_compute_ms_p99": 0.12374874999999998,
+      "generator_band_Hz": [
+        0.08437440153073739,
+        0.2787503335288692
+      ],
+      "peak_rotation_deg": 2.4571625095606233,
+      "small_angle_screen_pass": true,
+      "total_run_seconds": 18.55016008298844,
+      "pressure_record_sha256": "5fc5d5b33a8bf5c22815e4d3380805c483915a14a4e301c41237964f8e982bce"
+    },
+    {
+      "case": "upstream_single_system",
+      "phase_seed": 731928,
+      "hybrid": {
+        "pooled_R2": 0.9953182632724311,
+        "minimum_point_R2": 0.9738718373165367,
+        "median_point_R2": 0.9961155101302118,
+        "pooled_RMSE_m": 0.03435689209707919,
+        "maximum_point_RMSE_m": 0.08163261216749067
+      },
+      "flat_prior_same_samples": {
+        "pooled_R2": 0.8648970736000197,
+        "minimum_point_R2": 0.5966779824771459,
+        "median_point_R2": 0.8915517815168739,
+        "pooled_RMSE_m": 0.18456219857815406,
+        "maximum_point_RMSE_m": 0.3154160459824027
+      },
+      "learned_prior": {
+        "mean_direction_deg": 29.02009938073934,
+        "spread_s": 12.05226543283005,
+        "Hs_m": 1.9611355469355718,
+        "Tp_s": 7.515146632261614,
+        "gamma": 3.3,
+        "objective": -0.5751310920892556,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 103,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "startup_compute_s": 2.6618161250371486,
+      "ongoing_compute_ms_median": 0.063041,
+      "ongoing_compute_ms_p99": 0.11831821999999997,
+      "generator_band_Hz": [
+        0.08437440153073739,
+        0.2787503335288692
+      ],
+      "peak_rotation_deg": 1.9539480296790628,
+      "small_angle_screen_pass": true,
+      "total_run_seconds": 18.581332250032574,
+      "pressure_record_sha256": "afc333e249dfda19a61f884dc4480e0b8d90272eb7cd303628c07142f40dc71f"
+    },
+    {
+      "case": "gaussian_single_peak",
+      "phase_seed": 731927,
+      "hybrid": {
+        "pooled_R2": 0.9973929693973178,
+        "minimum_point_R2": 0.990207665625863,
+        "median_point_R2": 0.9978959252725697,
+        "pooled_RMSE_m": 0.025607354515696245,
+        "maximum_point_RMSE_m": 0.04932190064451751
+      },
+      "flat_prior_same_samples": {
+        "pooled_R2": 0.9089145540763718,
+        "minimum_point_R2": 0.6729705002239438,
+        "median_point_R2": 0.932907091442277,
+        "pooled_RMSE_m": 0.15136175124549517,
+        "maximum_point_RMSE_m": 0.2873940185314057
+      },
+      "learned_prior": {
+        "mean_direction_deg": 30.179283416715553,
+        "spread_s": 14.597589443201509,
+        "Hs_m": 1.3992680864678402,
+        "Tp_s": 8.295062365397703,
+        "gamma": 3.3,
+        "objective": -3.1588938720701205,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 87,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "startup_compute_s": 2.568808041047305,
+      "ongoing_compute_ms_median": 0.063917,
+      "ongoing_compute_ms_p99": 0.12713853,
+      "generator_band_Hz": [
+        0.08437440153073739,
+        0.2787503335288692
+      ],
+      "peak_rotation_deg": 3.100288935335686,
+      "small_angle_screen_pass": true,
+      "total_run_seconds": 18.403652667067945,
+      "pressure_record_sha256": "dfeda07cb9f504d4f9e77eb25c49b65ee575d31f66e6a4acacf2bb9db7b650a4"
+    },
+    {
+      "case": "gaussian_single_peak",
+      "phase_seed": 731928,
+      "hybrid": {
+        "pooled_R2": 0.9975051922146625,
+        "minimum_point_R2": 0.9911944484262807,
+        "median_point_R2": 0.9980591713569952,
+        "pooled_RMSE_m": 0.024916500621610348,
+        "maximum_point_RMSE_m": 0.04707714656572489
+      },
+      "flat_prior_same_samples": {
+        "pooled_R2": 0.9068405224945074,
+        "minimum_point_R2": 0.6611700943294068,
+        "median_point_R2": 0.931253793343028,
+        "pooled_RMSE_m": 0.1522586675413982,
+        "maximum_point_RMSE_m": 0.2879721592232095
+      },
+      "learned_prior": {
+        "mean_direction_deg": 28.049873629846164,
+        "spread_s": 13.186829482435058,
+        "Hs_m": 1.6916614091223907,
+        "Tp_s": 7.9326392198421525,
+        "gamma": 3.3,
+        "objective": -3.2777804713769236,
+        "samples": 1024,
+        "history_duration_s": 511.5,
+        "boundary": false,
+        "diagnostic": {
+          "rank_min": 5,
+          "rank_max": 6,
+          "frequency_bins": 88,
+          "fit_band_Hz": [
+            0.06,
+            0.26
+          ],
+          "method": "Finite-window expected-periodogram fit: motion-cancelling pressure pair for frequency shape, matrix-Whittle angular profile",
+          "motion_cancelling_pair": [
+            5,
+            4
+          ],
+          "limits": "Single separable cos-2s direction prior; fixed gamma. Taper leakage modeled; no uncertainty intervals."
+        }
+      },
+      "startup_compute_s": 2.7711117500439286,
+      "ongoing_compute_ms_median": 0.064375,
+      "ongoing_compute_ms_p99": 0.12317877999999995,
+      "generator_band_Hz": [
+        0.08437440153073739,
+        0.2787503335288692
+      ],
+      "peak_rotation_deg": 2.6205097449021935,
+      "small_angle_screen_pass": true,
+      "total_run_seconds": 18.59282658388838,
+      "pressure_record_sha256": "2f73480818db7192c8e89fbd638de72407d7c7d9ac8c85144dc4d9b56751bb28"
+    }
+  ],
+  "frozen_method_integrity_pass": true
+}

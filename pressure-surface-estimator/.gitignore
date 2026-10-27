@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/
+work/CFDwavemaker/builds/
+work/cache/
+work/mplconfig/
+outputs/phone-replay-results/
+work/cfd-adapter-check/

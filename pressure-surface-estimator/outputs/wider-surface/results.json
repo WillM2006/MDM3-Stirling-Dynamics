@@ -1,0 +1,359 @@
+{
+  "protocol": {
+    "test": "space",
+    "source_sha256": {
+      "hybrid_pressure_live.py": "8d87c40eb676e3e896af1e7264fc425b9da8325ed0fdb57479df8ef9cf450b33",
+      "pressure_prior.py": "3cf9cee492f9279100cbbbfc8688ff12a2230b05fdf64b4b3bab76b45f4058f6",
+      "pressure_only_live.py": "0ca30f80afefe963425a259e905687c4c62f664e7d0dcad92faba5e426ce1029",
+      "pressure_array.py": "074a9b240489cfd5a6f33074c630bf88223cbfbf7502979e117ac635c4a98c39",
+      "submarine.py": "280ad27db4b49f8e640c8ce716471049bc124e848b3a08f1723634cbda568ede",
+      "time_domain.py": "0399b7b10a40cffe17f9df1c16278a2211a61a3df4a403f8170ba10831b7e9f8",
+      "sea.py": "bb166f30d1b728b45767d59349e2bb10fbd049b671a47ea23ae98277aa20a9b7"
+    },
+    "noise_std_Pa": 0,
+    "case_records": [
+      {
+        "case": "gaussian_single_peak_seed731927",
+        "pressure_sha256": "dfeda07cb9f504d4f9e77eb25c49b65ee575d31f66e6a4acacf2bb9db7b650a4",
+        "waveinput_sha256": "8b99bd03b0ba9c887fe9a9d40e170b384def04eaa85bd419e302e16fb8515549"
+      },
+      {
+        "case": "gaussian_single_peak_seed731928",
+        "pressure_sha256": "2f73480818db7192c8e89fbd638de72407d7c7d9ac8c85144dc4d9b56751bb28",
+        "waveinput_sha256": "ef7e7711171609cee9b2c6932e7f37417c23de1b2870e781b3801cd048c0607b"
+      },
+      {
+        "case": "upstream_single_system_seed731927",
+        "pressure_sha256": "5fc5d5b33a8bf5c22815e4d3380805c483915a14a4e301c41237964f8e982bce",
+        "waveinput_sha256": "2cf0f9fa158be6e8d08444ee332a674164fa2d43803f54e4cf6a01ac42720b14"
+      },
+      {
+        "case": "upstream_single_system_seed731928",
+        "pressure_sha256": "afc333e249dfda19a61f884dc4480e0b8d90272eb7cd303628c07142f40dc71f",
+        "waveinput_sha256": "eecd6fb7fde3729acb633beb16270c27089581725d4bb632dcaf71fe9eeb9455"
+      }
+    ],
+    "independence": "Native CFDwavemaker linear Airy wave source, existing shared known hull/instrument approximations; not nonlinear CFD or real measurements",
+    "comparison": "Paired existing four realizations; exploratory envelope mapping, not fresh held-out sea validation",
+    "inverse": "Unchanged 128-tap causal pressure-only FIR, ridge=1e-8, uniform directional mixture=.01, gamma fixed3.3, initial 1024 pressure packets only for prior learning",
+    "score": "All7169 samples from packet1024 onward; current timestamp; no phase/time alignment or truth rescaling",
+    "fs_Hz": 2,
+    "centre_depth_m": 15,
+    "reference_offset_s": 400,
+    "metrics": "R2=1-SSE/sum((truth-local_time_mean)^2); spatial pooling sums pointwise denominators, no per-frame normalization",
+    "prespecified_depths_m": [
+      15,
+      30,
+      45,
+      60,
+      80,
+      100,
+      150
+    ],
+    "prespecified_centred_rectangles_m": [
+      [
+        60,
+        12
+      ],
+      [
+        80,
+        20
+      ],
+      [
+        100,
+        40
+      ],
+      [
+        140,
+        60
+      ],
+      [
+        200,
+        100
+      ],
+      [
+        300,
+        150
+      ]
+    ],
+    "spatial_grid": "5m spacing over x[-150,150], y[-75,75]; original 403-point 60x12 grid scored separately",
+    "depth_patch_m": [
+      60,
+      12
+    ],
+    "depth_grid_points": 403,
+    "depth_calibration": "Nominal known hull/port depth supplied separately at each depth; prior relearned from that depth's pressures. Same sea phases/amplitudes across depths.",
+    "interpretation": "No universal depth cutoff; frozen estimator and chosen seas only. Numerical regularization remains active even without sensor noise."
+  },
+  "runs": [
+    {
+      "case": "gaussian_single_peak_seed731927",
+      "areas": [
+        {
+          "length_m": 60,
+          "width_m": 12,
+          "grid_points": 403,
+          "pooled_R2": 0.9973929693973178,
+          "minimum_point_R2": 0.990207665625863,
+          "median_point_R2": 0.9978959252725697,
+          "pooled_RMSE_m": 0.025607354515696245,
+          "maximum_point_RMSE_m": 0.04932190064451773
+        },
+        {
+          "length_m": 80,
+          "width_m": 20,
+          "grid_points": 85,
+          "pooled_R2": 0.9940484662877529,
+          "minimum_point_R2": 0.9748867161903481,
+          "median_point_R2": 0.9955312069481629,
+          "pooled_RMSE_m": 0.03867711631600054,
+          "maximum_point_RMSE_m": 0.07940911162619078
+        },
+        {
+          "length_m": 100,
+          "width_m": 40,
+          "grid_points": 189,
+          "pooled_R2": 0.9858016993720699,
+          "minimum_point_R2": 0.91261279245066,
+          "median_point_R2": 0.990964292821061,
+          "pooled_RMSE_m": 0.059730631721577804,
+          "maximum_point_RMSE_m": 0.14871695824052814
+        },
+        {
+          "length_m": 140,
+          "width_m": 60,
+          "grid_points": 377,
+          "pooled_R2": 0.9617275085155954,
+          "minimum_point_R2": 0.7424533015892731,
+          "median_point_R2": 0.9781643280534105,
+          "pooled_RMSE_m": 0.09803574173821045,
+          "maximum_point_RMSE_m": 0.2549831752909643
+        },
+        {
+          "length_m": 200,
+          "width_m": 100,
+          "grid_points": 861,
+          "pooled_R2": 0.8894871158035342,
+          "minimum_point_R2": 0.3727107659584581,
+          "median_point_R2": 0.9311227714156118,
+          "pooled_RMSE_m": 0.16637803522947417,
+          "maximum_point_RMSE_m": 0.39633600926189577
+        },
+        {
+          "length_m": 300,
+          "width_m": 150,
+          "grid_points": 1891,
+          "pooled_R2": 0.7329380760032055,
+          "minimum_point_R2": 0.061447675078244446,
+          "median_point_R2": 0.8232106703669282,
+          "pooled_RMSE_m": 0.2580857413260447,
+          "maximum_point_RMSE_m": 0.480540042942616
+        }
+      ],
+      "regression_existing_predictions_and_truth_pass": true,
+      "elapsed_s": 88.12979562510736
+    },
+    {
+      "case": "gaussian_single_peak_seed731928",
+      "areas": [
+        {
+          "length_m": 60,
+          "width_m": 12,
+          "grid_points": 403,
+          "pooled_R2": 0.9975051922146625,
+          "minimum_point_R2": 0.9911944484262807,
+          "median_point_R2": 0.9980591713569952,
+          "pooled_RMSE_m": 0.024916500621610348,
+          "maximum_point_RMSE_m": 0.047077146565724905
+        },
+        {
+          "length_m": 80,
+          "width_m": 20,
+          "grid_points": 85,
+          "pooled_R2": 0.9945125952443268,
+          "minimum_point_R2": 0.97689332377497,
+          "median_point_R2": 0.9957850346898569,
+          "pooled_RMSE_m": 0.03698288080916392,
+          "maximum_point_RMSE_m": 0.07731534026139589
+        },
+        {
+          "length_m": 100,
+          "width_m": 40,
+          "grid_points": 189,
+          "pooled_R2": 0.9872566813875748,
+          "minimum_point_R2": 0.9215250304489628,
+          "median_point_R2": 0.9916981922503753,
+          "pooled_RMSE_m": 0.0564051531782324,
+          "maximum_point_RMSE_m": 0.14319849065633167
+        },
+        {
+          "length_m": 140,
+          "width_m": 60,
+          "grid_points": 377,
+          "pooled_R2": 0.9644786260067609,
+          "minimum_point_R2": 0.7585506700769853,
+          "median_point_R2": 0.9802554282192637,
+          "pooled_RMSE_m": 0.09426599294499598,
+          "maximum_point_RMSE_m": 0.2509460306226969
+        },
+        {
+          "length_m": 200,
+          "width_m": 100,
+          "grid_points": 861,
+          "pooled_R2": 0.8931011509998981,
+          "minimum_point_R2": 0.38732053802351585,
+          "median_point_R2": 0.9368431582811568,
+          "pooled_RMSE_m": 0.16382122998333576,
+          "maximum_point_RMSE_m": 0.39688481400463477
+        },
+        {
+          "length_m": 300,
+          "width_m": 150,
+          "grid_points": 1891,
+          "pooled_R2": 0.7384709786708652,
+          "minimum_point_R2": 0.06482419098074199,
+          "median_point_R2": 0.8236445048497809,
+          "pooled_RMSE_m": 0.25643886265154925,
+          "maximum_point_RMSE_m": 0.48538098105498456
+        }
+      ],
+      "regression_existing_predictions_and_truth_pass": true,
+      "elapsed_s": 86.51322904089466
+    },
+    {
+      "case": "upstream_single_system_seed731927",
+      "areas": [
+        {
+          "length_m": 60,
+          "width_m": 12,
+          "grid_points": 403,
+          "pooled_R2": 0.9949454469964992,
+          "minimum_point_R2": 0.9723860757320821,
+          "median_point_R2": 0.9957414203606908,
+          "pooled_RMSE_m": 0.03553977551904416,
+          "maximum_point_RMSE_m": 0.08265430822129534
+        },
+        {
+          "length_m": 80,
+          "width_m": 20,
+          "grid_points": 85,
+          "pooled_R2": 0.9859843244151646,
+          "minimum_point_R2": 0.9098843692094832,
+          "median_point_R2": 0.9913343313842143,
+          "pooled_RMSE_m": 0.05916778465236427,
+          "maximum_point_RMSE_m": 0.1501188490358109
+        },
+        {
+          "length_m": 100,
+          "width_m": 40,
+          "grid_points": 189,
+          "pooled_R2": 0.9620370761092784,
+          "minimum_point_R2": 0.772117323900297,
+          "median_point_R2": 0.9778102915287898,
+          "pooled_RMSE_m": 0.09738000696448149,
+          "maximum_point_RMSE_m": 0.2396817119041026
+        },
+        {
+          "length_m": 140,
+          "width_m": 60,
+          "grid_points": 377,
+          "pooled_R2": 0.9096583682981086,
+          "minimum_point_R2": 0.5851946951042648,
+          "median_point_R2": 0.9408798147586867,
+          "pooled_RMSE_m": 0.1502731175812094,
+          "maximum_point_RMSE_m": 0.3230513380324056
+        },
+        {
+          "length_m": 200,
+          "width_m": 100,
+          "grid_points": 861,
+          "pooled_R2": 0.7998110136609377,
+          "minimum_point_R2": 0.2805366965826801,
+          "median_point_R2": 0.8473218888141817,
+          "pooled_RMSE_m": 0.22366558230857422,
+          "maximum_point_RMSE_m": 0.42446499860605924
+        },
+        {
+          "length_m": 300,
+          "width_m": 150,
+          "grid_points": 1891,
+          "pooled_R2": 0.6336263460129685,
+          "minimum_point_R2": 0.019969920598271407,
+          "median_point_R2": 0.6827874528295383,
+          "pooled_RMSE_m": 0.30220764172038106,
+          "maximum_point_RMSE_m": 0.4909341685674883
+        }
+      ],
+      "regression_existing_predictions_and_truth_pass": true,
+      "elapsed_s": 86.09208933380432
+    },
+    {
+      "case": "upstream_single_system_seed731928",
+      "areas": [
+        {
+          "length_m": 60,
+          "width_m": 12,
+          "grid_points": 403,
+          "pooled_R2": 0.9953182632724311,
+          "minimum_point_R2": 0.9738718373165368,
+          "median_point_R2": 0.9961155101302118,
+          "pooled_RMSE_m": 0.03435689209707919,
+          "maximum_point_RMSE_m": 0.08163261216749063
+        },
+        {
+          "length_m": 80,
+          "width_m": 20,
+          "grid_points": 85,
+          "pooled_R2": 0.9870043707117966,
+          "minimum_point_R2": 0.9173847956992426,
+          "median_point_R2": 0.9923491875857088,
+          "pooled_RMSE_m": 0.05726088185322412,
+          "maximum_point_RMSE_m": 0.14684931739174062
+        },
+        {
+          "length_m": 100,
+          "width_m": 40,
+          "grid_points": 189,
+          "pooled_R2": 0.9641800141738215,
+          "minimum_point_R2": 0.7857569657619641,
+          "median_point_R2": 0.9792860972309569,
+          "pooled_RMSE_m": 0.09506861786202805,
+          "maximum_point_RMSE_m": 0.23776893461684204
+        },
+        {
+          "length_m": 140,
+          "width_m": 60,
+          "grid_points": 377,
+          "pooled_R2": 0.9129190938862028,
+          "minimum_point_R2": 0.6044512716036295,
+          "median_point_R2": 0.9444369785896526,
+          "pooled_RMSE_m": 0.14829416689687136,
+          "maximum_point_RMSE_m": 0.3222180663976128
+        },
+        {
+          "length_m": 200,
+          "width_m": 100,
+          "grid_points": 861,
+          "pooled_R2": 0.8030208505653734,
+          "minimum_point_R2": 0.27244531244384584,
+          "median_point_R2": 0.8528213753773887,
+          "pooled_RMSE_m": 0.22327762970603307,
+          "maximum_point_RMSE_m": 0.43153300872386124
+        },
+        {
+          "length_m": 300,
+          "width_m": 150,
+          "grid_points": 1891,
+          "pooled_R2": 0.6340731757804792,
+          "minimum_point_R2": 0.011737598472108757,
+          "median_point_R2": 0.6881099750857445,
+          "pooled_RMSE_m": 0.30413229112256435,
+          "maximum_point_RMSE_m": 0.4987572259909309
+        }
+      ],
+      "regression_existing_predictions_and_truth_pass": true,
+      "elapsed_s": 85.66553029208444
+    }
+  ],
+  "frozen_method_and_original_pressure_integrity_pass": true
+}
