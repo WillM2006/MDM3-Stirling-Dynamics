@@ -1,102 +1,102 @@
 import numpy as np
-from scipy.special import gamma as G
 import matplotlib.pyplot as plt
-import time 
-
-# change var idkname
-
-
+from scipy.special import gamma as G
+from scipy.integrate import cumulative_trapezoid
 
 class Sea():
 
-    def __init__(self, freq=None, omega=None, theta=None, seed=42):
-        """Give EITHER freq (Hz) OR omega (rad/s), plus theta (wave directions, rad)
-           e.g. Sea(omega=OMEGAS, theta=BETAS)  or  Sea(freq=np.linspace(0.03, 1.0, 100), theta=BETAS)"""
-
-        g = 9.81
+    def __init__(self, 
+                 n_freq=40, # 
+                 n_dir=36, # 
+                 omega_range=(0.1, 2.0),
+                 Hs=1.7, # Significant Wave Height 
+                 Tp=5.9, # Peak Period
+                 direction=0.0, # mean direction (radians)
+                 gamma=3.3, # peak enhancement factor: 1 for pm / 3.3 for jonswap
+                 s=5, # directional spreading factor
+                 seed=42
+                 ):
+        
 
         rng = np.random.default_rng(seed)
 
-        if (freq is None) == (omega is None):
-            raise ValueError("give either freq= (Hz) or omega= (rad/s), not both")
+        self.g = 9.81
+        self.Hs, self.Tp, self.gamma, self.s = Hs, Tp, gamma, s
+        self.seed, self.omega_range = seed, omega_range
 
-        # frequency grid - store both, the rest of the class uses self.f (Hz)
-        if freq is not None:
-            self.f = np.asarray(freq, dtype=float)
-            self.omega = 2 * np.pi * self.f
-        else:
-            self.omega = np.asarray(omega, dtype=float)
-            self.f = self.omega / (2 * np.pi)
-        self.delta_f = self.f[1] - self.f[0]
 
-        # direction grid
-        self.theta = np.linspace(-np.pi, np.pi, 36, endpoint=False) if theta is None else np.asarray(theta, dtype=float)
-        self.delta_theta = 2 * np.pi / len(self.theta) # assumes the directions cover the full circle evenly
+        self.theta_m = direction # mean wave direction
+        self.f_p = 1 / Tp # peak frequency: 0.17Hz calm / 0.12Hz moderate / 0.08Hz rough / 0.065Hz storm
+
+        # directions evenly spaced round a full circle
+        self.theta = np.linspace(-np.pi, np.pi, n_dir, endpoint=False)
+        self.delta_theta = np.full(n_dir, 2 * np.pi / n_dir) 
+
+        # frequencies equal energy bins / each frequency is at its bins energy midpoint
+        f_fine = np.linspace(*omega_range, 5000) / (2 * np.pi)
+        E = cumulative_trapezoid(self.jonswap(f_fine), f_fine, initial=0)
+
+        self.f = np.interp(np.linspace(0, E[-1], 2 * n_freq + 1), E, f_fine)[1::2]
+        self.delta_f = (E[-1] / n_freq) / self.jonswap(self.f)
+        self.omega = 2 * np.pi * self.f
 
         # wavenumber from deep-water dispersion relation: w² = g k
-        self.k = self.omega**2 / g
+        self.k = self.omega**2 / self.g
         self.phi = rng.uniform(0, 2 * np.pi, (len(self.f), len(self.theta)))
 
-
+        # compute wave frequencies, directions, directional_frequency_spectrum, amplitudes
+        self.S_f = self.jonswap(self.f) # (N,)
+        self.D = self.directional_spreading(self.theta) # (M,)
+        self.directional_frequency_spectrum = self.S_f[:, None] * self.D[None, :] # (N, M)
+        self.wave_amplitudes = np.sqrt(2 * self.directional_frequency_spectrum * self.delta_f[:, None] * self.delta_theta[None, :]) # (N, M)
 
     def jonswap(self, f):
         """S_f spectrum """
-
-        g = 9.81 # gravity
-        gamma = 3.3 # peak enhancement factor: 1 for pm / 3.3 for jonswap
         sigma_1, sigma_2 = 0.07, 0.09 # peak width
-        alpha = 0.0081 # energy scale: 0.0081 pm value (can use DNV normailsation instead)
-        f_m = 0.17 # peak frequency: 0.17Hz calm / 0.12Hz moderate / 0.08Hz rough / 0.065Hz storm
 
-        sigma = sigma_1 if f <= f_m else sigma_2
-        b = np.exp(-1/(2*sigma**2) * (f/f_m - 1)**2)
-
-        S_f = alpha * g**2 / (16 * np.pi**4) * f**-5 * np.exp(-5/4 * (f/f_m)**-4) * gamma**b
+        sigma = np.where(f <= self.f_p, sigma_1, sigma_2)
+        b = np.exp(-(f / self.f_p - 1)**2 / (2 * sigma**2))
+        alpha = (5 / 16) * self.Hs**2 * (2 * np.pi * self.f_p)**4 / self.g**2 * (1 - 0.287 * np.log(self.gamma))
+        S_f = alpha * self.g**2 / (16 * np.pi**4) * f**-5 * np.exp(-1.25 * (f / self.f_p)**-4) * self.gamma**b
 
         return S_f
 
+    def directional_spreading(self, theta):
+        """Directional Spectrum / spreading function / D(θ)"""
+        d = np.arctan2(np.sin(theta - self.theta_m), np.cos(theta - self.theta_m))  # wrap to [-π, π]
+        D = np.where(np.abs(d) <= np.pi / 2, np.cos(d)**(2 * self.s), 0.0)
+        return D / np.sum(D * self.delta_theta)
+
+
+    '''    
     def longuet_higgins(self, theta):
+        # longuet_higgins cos^(2s)(Δθ/2) is much broader than directional_spreadings cos^(2s)(Δθ) 
         """Directional Spectrum / spreading function / D(θ)"""
 
-        theta_m = 0 # mean wave direction
-        s = 10 # directional spreading factor: 10 wind waves / 25 short swell / 75 long swell
-        Q = G(s + 1) / (2 * np.sqrt(np.pi) * G(s + 0.5)) # normalizing factor (integration of D_theta goes to 1)
+        Q = G(self.s + 1) / (2 * np.sqrt(np.pi) * G(self.s + 0.5)) # normalizing factor (integration of D_theta goes to 1)
+        d = np.arctan2(np.sin(theta - self.theta_m), np.cos(theta - self.theta_m))  # wrap to [-π, π]
+        D = Q * np.cos(d / 2)**(2 * self.s)
 
-        D_theta = Q * np.cos(np.abs(theta - theta_m)/2)**(2 * s)
+        return D    
+    '''
 
-        return D_theta
-
-    def directional_frequency_spectrum(self, f, theta):
-        return self.jonswap(f) * self.longuet_higgins(theta)
 
     def superposition(self, x, y, t):
         '''Surface elavation'''
-
         H_t = 0
-        wave_amplitudes = np.empty((len(self.f), len(self.theta)))
-
         for n in range(len(self.f)):
             for m in range(len(self.theta)):
-
                 k_dot_X = self.k[n] * (x * np.cos(self.theta[m]) + y * np.sin(self.theta[m]))
+                random_phase = np.cos(k_dot_X - 2 * np.pi * self.f[n] * t + self.phi[n, m])
+                H_t += self.wave_amplitudes[n, m] * random_phase
 
-                wave_amplitude = np.sqrt(2 * self.directional_frequency_spectrum(self.f[n], self.theta[m]) * self.delta_f * self.delta_theta)
-                idkname = np.cos(k_dot_X - 2 * np.pi * self.f[n] * t + self.phi[n, m])
-
-                wave_amplitudes[n,m] = wave_amplitude
-                H_t += wave_amplitude * idkname
-
-        return H_t, wave_amplitudes
-
+        return H_t
 
     def sea_spectrum(self):
         """S(f), D(theta), S(f, theta), wave amplitudes and Hs"""
-        S_f = np.array([self.jonswap(f) for f in self.f]) # jonswap only takes scalars
-        D = self.longuet_higgins(self.theta)
-        S = S_f[:, None] * D[None, :]
-        a = np.sqrt(2 * S * self.delta_f * self.delta_theta)
-        Hs = 4 * np.sqrt(np.sum(a**2) / 2)
-        return S_f, D, S, a, Hs
+        Hs = 4 * np.sqrt(np.sum(self.wave_amplitudes**2) / 2)
+        return self.S_f, self.D, self.directional_frequency_spectrum, self.wave_amplitudes, Hs
+
 
 
     def plot(self, X=None, Y=None, T=None, extra=None):
@@ -111,40 +111,23 @@ class Sea():
         surface = np.empty((len(T), len(Y), len(X)))     # note: np.empty takes a tuple
 
         for i, t in enumerate(T):
-            surface[i], _ = self.superposition(Xg, Yg, t)    # whole surface at time t
-
-
-        '''fig, ax = plt.subplots()
-        c = ax.contourf(X, Y, surface[0], levels=30, cmap='viridis')
-        fig.colorbar(c, label='η (m)')
-        ax.set_xlabel('x (m)')
-        ax.set_ylabel('y (m)')
-        ax.set_title(f't = {T[0]:.1f} s')
-        ax.set_aspect('equal')'''
-
+            surface[i] = self.superposition(Xg, Yg, t)    # whole surface at time t
 
         fig = plt.figure()
-        ax3 = fig.add_subplot(projection='3d')
+        ax = fig.add_subplot(projection='3d')
         for i in range(len(T)):
-            ax3.clear()
-            ax3.set_zlim(-2, 2)
-            ax3.plot_surface(Xg, Yg, surface[i], cmap='viridis')
-            ax3.set_zlabel('η (m)')
+            ax.clear()
+            ax.set_zlim(-5, 5)
+            ax.plot_surface(Xg, Yg, surface[i], cmap='Blues_r')
+            ax.set_zlabel('η (m)')
             if extra is not None:
-                extra(ax3, i)
+                extra(ax, i)
             plt.pause(0.05)
 
         plt.show()
 
 
 if __name__ == "__main__":
-    OMEGAS = np.linspace(0.1, 2.0, 40)
-    BETAS = np.deg2rad(np.arange(0, 360, 10))
-
-
-    FREQS = np.linspace(0.03, 1.0, 100)
-    THETAS = np.linspace(-np.pi, np.pi, 36, endpoint=False)
-
-
-    sea = Sea(freq=FREQS, theta=THETAS)
-    sea.plot()
+    sea = Sea(n_freq=40, n_dir=36, direction=np.pi/4, s=2.5)
+    sea.plot(X=np.linspace(0, 100, 50), Y=np.linspace(0, 100, 50))
+    
