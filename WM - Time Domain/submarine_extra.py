@@ -4,12 +4,11 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection, Poly3DCollection
 from scipy.signal import welch
 
 import submarine
-from submarine import Submarine, RHO, G, LENGTH, RADIUS, DEPTH, OMEGAS
+from submarine import Submarine, RHO, G, LENGTH, RADIUS, DEPTH
 
 
 T_SIM = 1200.0      # simulation length (s)
 T_SETTLE = 300.0    # start-up discarded from the plots / spectra
-F_PEAK = 0.17       # peak frequency, same as f_m in sea.py's jonswap
 
 # Sensors
 FS_SENSOR = 2.0     # samples per second
@@ -99,6 +98,8 @@ if __name__ == "__main__":
 
     # ---- simulation (submarine.py)
     sub = Submarine()
+    OMEGAS = sub.bem_omegas # BEM frequency grid (rad/s)
+    DEPTH = sub.depth
     sub.solve_hydrodynamics()
     sub.build_excitation()
     sub.build_kernel()
@@ -107,14 +108,14 @@ if __name__ == "__main__":
 
     # ---- sea spectrum
     S_f, D, S_sea, a, Hs = sub.sea_spectrum()
-    print(f"Sea: Hs = {Hs:.2f} m, Tp = {1 / F_PEAK:.1f} s")
+    print(f"Sea: Hs = {Hs:.2f} m, Tp = {sub.Tp:.1f} s")
 
     # ---- RAOs: on the BEM grid (plots) and at the Sea frequencies (response spectra)
     RAO = compute_rao(sub, OMEGAS, sub.A, sub.B, sub.F_exc)
     A_s, B_s = interp_omega(sub.w, OMEGAS, sub.A).real, interp_omega(sub.w, OMEGAS, sub.B).real
     F_s = interp_omega(sub.w, OMEGAS, sub.F_exc, outside=0) # no force above OMEGAS[-1], same as build_excitation
     H_sea = compute_rao(sub, sub.w, A_s, B_s, F_s)
-    S_resp = np.sum(np.abs(H_sea)**2 * S_sea[..., None] * sub.delta_theta, axis=1) # (N_f, 6)
+    S_resp = np.sum(np.abs(H_sea)**2 * S_sea[..., None] * sub.delta_theta[None, :, None], axis=1) # (N_f, 6)
 
     # ---- sensors
     step = max(1, int(round(1 / (FS_SENSOR * dt))))
@@ -241,7 +242,7 @@ if __name__ == "__main__":
     ax3.plot_surface(*hull_surface(np.zeros(6), 1), color="dimgray", alpha=0.6)
     xs_ = np.linspace(-120, 120, 40)
     XS, YS = np.meshgrid(xs_, xs_)
-    ax3.plot_surface(XS, YS, sub.superposition(XS, YS, t_snap)[0], cmap="Blues_r", alpha=0.25, linewidth=0)
+    ax3.plot_surface(XS, YS, sub.superposition(XS, YS, t_snap), cmap="Blues_r", alpha=0.25, linewidth=0)
     ax3.set(xlabel="x (m)", ylabel="y (m)", zlabel="z (m)", zlim=(-45, 6),
             title=f"Wave orbital velocity at 3 depths, t = {t_snap:.0f} s\n(arrow length = 10 s of travel)")
     ax3.set_box_aspect((1, 1, 0.5))
@@ -256,14 +257,14 @@ if __name__ == "__main__":
     cs = ax2.contourf(XF, ZF, pf / 1e3, levels=30, cmap="RdBu_r")
     fig.colorbar(cs, ax=ax2, label="dynamic pressure (kPa)")
     ax2.streamplot(xf, zf, uf, wf, color="k", density=1.3, linewidth=0.6, arrowsize=0.8)
-    ax2.plot(xf, sub.superposition(xf, 0 * xf, t_snap)[0], color="navy", lw=2)
+    ax2.plot(xf, sub.superposition(xf, 0 * xf, t_snap), color="navy", lw=2)
     ax2.add_patch(plt.Rectangle((-LENGTH / 2, -DEPTH - RADIUS), LENGTH, 2 * RADIUS, color="dimgray", zorder=3))
     ax2.set(xlabel="x (m)", ylabel="z (m)", title="Vertical slice y = 0: pressure + flow streamlines (incident wave)",
             ylim=(-50, 8))
 
     # 14. Particle orbits under ONE regular wave (Tp, Hs): circles shrinking as e^{kz}
     EXAG_O = 3
-    a_reg, w_reg = Hs / 2, 2 * np.pi * F_PEAK
+    a_reg, w_reg = Hs / 2, 2 * np.pi * sub.f_p
     k_reg = w_reg**2 / G
     lam = 2 * np.pi / k_reg
     fig = plt.figure(figsize=(12, 6.5))
@@ -282,7 +283,7 @@ if __name__ == "__main__":
             ax3.scatter(x0 - r * np.sin(k_reg * x0), 0, z0 + r * np.cos(k_reg * x0), color="k", s=6)
     ax3.plot([0, 2 * lam], [0, 0], [-DEPTH, -DEPTH], "k--", lw=1, label=f"sub depth ({DEPTH:.0f} m)")
     ax3.set(xlabel="x (m)", ylabel="y (m)", zlabel="z (m)",
-            title=f"Particle orbits under a regular wave: T = {1 / F_PEAK:.0f} s, lambda = {lam:.0f} m "
+            title=f"Particle orbits under a regular wave: T = {sub.Tp:.0f} s, lambda = {lam:.0f} m "
                   f"(orbits x{EXAG_O}, dots = t = 0)")
     ax3.set_box_aspect((2.2, 0.4, 0.9))
     ax3.view_init(elev=12, azim=-75)

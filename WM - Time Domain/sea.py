@@ -50,6 +50,8 @@ class Sea():
         self.directional_frequency_spectrum = self.S_f[:, None] * self.D[None, :] # (N, M)
         self.wave_amplitudes = np.sqrt(2 * self.directional_frequency_spectrum * self.delta_f[:, None] * self.delta_theta[None, :]) # (N, M)
 
+        self.Hs_actual = 4 * np.sqrt(np.sum(self.wave_amplitudes**2) / 2)
+
     def jonswap(self, f):
         """S_f spectrum """
         sigma_1, sigma_2 = 0.07, 0.09 # peak width
