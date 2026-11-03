@@ -52,7 +52,7 @@ def compute_rao(sub, omega, A, B, F):
     """[-w^2 (M + A) - i w B + C] X = F_exc  ->  RAO[omega, theta, dof] (motion per m of wave)"""
     RAO = np.zeros_like(F, dtype=complex)
     for i, w in enumerate(omega):
-        Z = -w**2 * (sub.M + A[i]) - 1j * w * B[i] + sub.C_hydro
+        Z = -w**2 * (sub.M + A[i]) - 1j * w * (B[i] + sub.B_visc) + sub.C_hydro
         RAO[i] = np.linalg.solve(Z, F[i].T).T
     return RAO
 
@@ -103,6 +103,7 @@ if __name__ == "__main__":
     sub.solve_hydrodynamics()
     sub.build_excitation()
     sub.build_kernel()
+    sub.build_viscous_damping()
     T, X_hist = sub.simulate(duration=T_SIM)
     t, X, V = T, X_hist[:, :6], X_hist[:, 6:]
 
