@@ -1,3 +1,7 @@
+import argparse
+import os
+import time
+import numpy as np
 from sea import Sea
 from submarine import Submarine
 from sensors import create_sensor_data
@@ -21,7 +25,7 @@ T_SIM = 1200.0
 # params to test
 HS_VALUES = [0.5, 1, 1.7, 2.5, 4]
 TP_VALUES = [4.5, 6, 8, 10, 12]
-DIRECTION_VALUES = [0, 45, 90, 135, 180]
+DIRECTION_VALUES = [0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi]
 GAMMA_VALUES = [1, 2, 3.3, 5, 7]
 SPREAD_VALUES = [2, 5, 10, 25, 75]
 DEPTH_VALUES = [10, 15, 25, 40, 60]
@@ -29,7 +33,7 @@ DEPTH_VALUES = [10, 15, 25, 40, 60]
 SEED_VALUES = range(20)
 
 # held fixed while one param at a time is varied through its list above
-BASELINE = dict(Hs=1.7, Tp=8, s=10, gamma=3.3, depth=15, direction=90)
+BASELINE = dict(Hs=1.7, Tp=8, s=10, gamma=3.3, depth=15, direction=np.pi/2)
 
 
 # BEM cache: A, B, F_exc only depend on the mesh, depth, speed and the omega/theta grids (theta is always the full circle),
@@ -60,13 +64,73 @@ def make_combos():
     return combos
 
 
-if __name__ == "__main__":
+# resume / progress: a run gets DONE_FLAG written only after all its csvs are saved, so a run without it
+# (never started, or interrupted part way) is (re)done next time and finished runs are skipped
+DONE_FLAG = "done.flag"
 
+
+def run_list(out_root):
+    """every (run folder, create_sensor_data kwargs) of the sweep, in run order"""
+    runs = []
     for swept in make_combos():
-        filedir = "sensordata_" + "_".join(f"{k}{v}" for k, v in swept.items())
-
+        # direction is simulated in radians but named in degrees (pi/2 -> direction90)
+        filedir = "sensordata_" + "_".join(f"{k}{round(float(np.rad2deg(v)), 3):g}" if k == "direction" else f"{k}{v}"
+                                           for k, v in swept.items())
         for seed in SEED_VALUES:
-            filename = f"sensordata_{seed}"
-
             params = dict(n_freq=N_FREQ, n_dir=N_DIR, omega_range=OMEGA_RANGE, seed=seed, **swept)
-            create_sensor_data(out_dir=f"{filedir}/{filename}", t_sim=T_SIM, **params)
+            runs.append((os.path.join(out_root, filedir, f"sensordata_{seed}"), params))
+    return runs
+
+
+def is_done(run_dir):
+    return os.path.exists(os.path.join(run_dir, DONE_FLAG))
+
+
+def hms(seconds):
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    return f"{h}h{m:02d}m" if h else f"{m}m{s:02d}s"
+
+
+def print_status(runs, out_root):
+    """per parameter combination: finished seeds, and any run folder left unfinished (interrupted)"""
+    by_combo = {}
+    for run_dir, _ in runs:
+        by_combo.setdefault(os.path.dirname(run_dir), []).append(run_dir)
+    for combo, dirs in by_combo.items():
+        done = sum(is_done(d) for d in dirs)
+        broken = [os.path.basename(d) for d in dirs if os.path.isdir(d) and not is_done(d)]
+        mark = "done" if done == len(dirs) else f"{done}/{len(dirs)}"
+        print(f"  {mark:>6}  {os.path.relpath(combo, out_root)}" + (f"   (unfinished: {', '.join(broken)})" if broken else ""))
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="One-at-a-time sensor data sweep. Re-running resumes: finished runs are skipped, "
+                                             "interrupted ones are redone.")
+    ap.add_argument("--out", default=".", help="folder the sensordata_* folders go in (default: the current folder)")
+    ap.add_argument("--status", action="store_true", help="only show progress, don't run anything")
+    ap.add_argument("--force", action="store_true", help="redo every run, including finished ones")
+    args = ap.parse_args()
+
+    runs = run_list(args.out)
+    todo = [(d, p) for d, p in runs if args.force or not is_done(d)]
+    n_done = len(runs) - len(todo)
+    print(f"{n_done}/{len(runs)} runs finished, {len(todo)} to do   (output folder: {os.path.abspath(args.out)})")
+
+    if args.status:
+        print_status(runs, args.out)
+        raise SystemExit
+
+    t_start = time.time()
+    for i, (run_dir, params) in enumerate(todo, 1):
+        t_run = time.time()
+        create_sensor_data(out_dir=run_dir, t_sim=T_SIM, **params)
+        with open(os.path.join(run_dir, DONE_FLAG), "w") as f:
+            f.write(f"finished {time.strftime('%Y-%m-%d %H:%M:%S')} in {time.time() - t_run:.1f} s\n")
+
+        elapsed = time.time() - t_start
+        eta = elapsed / i * (len(todo) - i) # average so far, the first run at each depth also does the BEM solve
+        print(f"[{n_done + i}/{len(runs)}] {os.path.relpath(run_dir, args.out)}  {time.time() - t_run:.1f} s"
+              f"  | elapsed {hms(elapsed)}, ETA {hms(eta)}", flush=True)
+
+    print(f"sweep complete: {len(runs)}/{len(runs)} runs in {os.path.abspath(args.out)}")

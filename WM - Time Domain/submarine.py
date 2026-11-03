@@ -29,6 +29,10 @@ dt = 0.1 # runge kutta 4 step (s)
 T_MEMORY = 30.0 # how far back the radiation memory convolution looks (s)
 T_RAMP = 60.0 # waves ramped in smoothly over this time, a sudden start kicks the unrestrained dofs (surge/sway/yaw) into drift
 
+# viscous damping: potential flow alone gives roll zeta ~ 1.7e-4 and pitch ~ 1e-6, so those modes are effectively undamped
+# ASSUMED values (not computed) - the most influential setting in the dataset
+ZETA_VISC = {3: 0.05, 4: 0.10} # dof index -> damping ratio (3 = roll, 4 = pitch)
+
 
 class Submarine(Sea):
     def __init__(
@@ -71,6 +75,7 @@ class Submarine(Sea):
         self.M = self.as_matrix(self.body.compute_rigid_body_inertia(rho=RHO))
 
         self.F_conv_history = np.zeros(6) # radiation memory from past steps, set by convolution()
+        self.B_visc = np.zeros((6, 6)) # linear viscous damping, filled by build_viscous_damping()
 
         self.bem_omegas = np.linspace(*omega_range, n_freq) # BEM frequency grid (rad/s), evenly spaced for solving hydrodynamics
 
@@ -168,6 +173,14 @@ class Submarine(Sea):
         self.K = 2 / np.pi * np.trapezoid(cos_wt[:, :, None, None] * self.B[None], self.bem_omegas, axis=1) # (t, 6, 6)
 
 
+    def build_viscous_damping(self):
+        """B_visc[i, i] = 2 zeta_i sqrt(C_ii (M_ii + A_inf_ii)) for the dofs in ZETA_VISC, call after solve_hydrodynamics (needs A_inf)"""
+        self.B_visc = np.zeros((6, 6))
+        for i, zeta in ZETA_VISC.items():
+            self.B_visc[i, i] = 2 * zeta * np.sqrt(self.C_hydro[i, i] * (self.M[i, i] + self.A_inf[i, i]))
+        self.params["zeta_roll"], self.params["zeta_pitch"] = ZETA_VISC.get(3, 0.0), ZETA_VISC.get(4, 0.0)
+
+
     def convolution(self, v_history):
         """F_conv(t) = -∫ K(s) v(t - s) ds, trapezoid rule, v_history[-1] is the current velocity
            only the PAST part (s >= dt) is done here, once per step - the s = 0 term
@@ -196,7 +209,9 @@ class Submarine(Sea):
 
         v = X[6:]
         F_conv = self.F_conv_history - 0.5 * dt * self.K[0] @ v # past memory + instantaneous s = 0 term
-        F = self.excitation(t, X[0] + self.forward_speed * t, X[1]) + F_conv + self.drag(v)
+        # excitation at the MEAN position: using the displaced x(t), y(t) is a second-order effect (motion x force)
+        # that pumped the lightly damped 73 s pitch mode
+        F = self.excitation(t, self.forward_speed * t, 0.0) + F_conv + self.drag(v) - self.B_visc @ v
         B = np.concatenate([np.zeros(6), self.M_inv @ F])
         return self.A_sys @ X + B
 
@@ -303,6 +318,7 @@ if __name__ == "__main__":
     sub.solve_hydrodynamics()
     sub.build_excitation()
     sub.build_kernel()
+    sub.build_viscous_damping()
 
     T, X_hist = sub.simulate(duration=600.0)
     sub.plot_motion(T, X_hist)

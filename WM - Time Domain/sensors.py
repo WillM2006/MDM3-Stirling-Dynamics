@@ -105,7 +105,7 @@ EARTH_RATE = np.array([OMEGA_EARTH * np.cos(LAT), 0.0, OMEGA_EARTH * np.sin(LAT)
 CONTROL_DOFS = [0, 1, 2, 5]     # surge, sway, heave, yaw ( indexing from previous list of 6 DOFs )
 T_CONTROL = 60.0                # period in seconds 
 ZETA_CONTROL = 0.7              # damping ratio
-COMPARE_CONTROLLER = True       # run without for comparison
+COMPARE_CONTROLLER = False      # True = also run without the controller (only used by Figure 8, doubles the run time)
 
 
 class ControlledSubmarine(Submarine):
@@ -216,7 +216,7 @@ def pressure_sensor(sub, wave_amps, t, X6, r):
 
 
     hydro = -RHO * G * dz
-    incident = incident_pressure(sub, wave_amps, mean_pos[0] + dx, mean_pos[1] + dy, mean_pos[2], t)
+    incident = incident_pressure(sub, wave_amps, np.full(len(t), mean_pos[0]), np.full(len(t), mean_pos[1]), mean_pos[2], t) # mean position, displacement is 2nd order
     total = hydro + incident
 
     return dict(total=total, hydro=hydro, incident=incident, dz=dz, mean_depth=-mean_pos[2])
@@ -388,6 +388,7 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
     sub.solve_hydrodynamics()
     sub.build_excitation()
     sub.build_kernel()
+    sub.build_viscous_damping()
     sub.build_controller()
 
     global rng
@@ -401,6 +402,7 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
     sub.control_on = True
     t, X_hist = sub.simulate(duration=t_sim)
     print("simulation (controller ON) done")
+    X_free = None
     if COMPARE_CONTROLLER:
         sub.control_on = False
         _, X_free = sub.simulate(duration=t_sim)
