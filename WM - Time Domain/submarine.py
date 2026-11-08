@@ -9,8 +9,8 @@ from sea import Sea
 
 
 # Sub conditions
-LENGTH = 70.0
-RADIUS = 5.0
+LENGTH = 90.0
+RADIUS = 5.36
 DEPTH = 15.0
 FORWARD_SPEED = 1.0 # problem.encounter_freq instead if speed is non 0
 
