@@ -1,5 +1,8 @@
 # Calibrating M from repeated native-duration sensor records
 
+Follow-up: [cross-spectral formula check on 600 additional held-out records](cross_variance.md)
+tests a coherence-aware finite-average correction while keeping this M fit fixed.
+
 ## Finding
 
 For the proposed uniform 6400-component generator, the prespecified
