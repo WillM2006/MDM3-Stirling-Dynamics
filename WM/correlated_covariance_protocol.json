@@ -1,0 +1,205 @@
+{
+  "parent": {
+    "parent": {
+      "parent_protocol": {
+        "base_main": "caaaf415dbe7bd372187758fe542c69999913d3e",
+        "modes": {
+          "current40": 40,
+          "uniform6400": 6400
+        },
+        "cases": {
+          "baseline": {
+            "Hs": 1.7,
+            "Tp": 8
+          },
+          "long_period": {
+            "Hs": 1.7,
+            "Tp": 12
+          },
+          "weak_waves": {
+            "Hs": 0.5,
+            "Tp": 8
+          }
+        },
+        "groups": {
+          "train_baseline": {
+            "case": "baseline",
+            "seed_start": 207000,
+            "records": 200
+          },
+          "test_baseline": {
+            "case": "baseline",
+            "seed_start": 208000,
+            "records": 200
+          },
+          "test_long_period": {
+            "case": "long_period",
+            "seed_start": 209000,
+            "records": 200
+          },
+          "test_weak_waves": {
+            "case": "weak_waves",
+            "seed_start": 210000,
+            "records": 200
+          }
+        },
+        "current40_groups": [
+          "train_baseline",
+          "test_baseline"
+        ],
+        "native_duration_s": 1200,
+        "discarded_s": 300,
+        "usable_s": 900,
+        "hydrodynamic_frequencies": 40,
+        "length_m": 90,
+        "radius_m": 5.36,
+        "depth_m": 15,
+        "speed_m_s": 0,
+        "directions": 36,
+        "gamma": 3.3,
+        "spreading_s": 10,
+        "direction_rad": 1.5707963267948966,
+        "sample_rate_Hz": 2,
+        "welch_seconds": 200,
+        "overlap": 0.5,
+        "bootstrap": 1000,
+        "fit": "baseline training only: median over auto-spectral cells of mean(numerator at M=1) / repeat-record variance",
+        "primary_family": "auto: exact auto-spectral variance form; real/imaginary cross approximations are validated separately",
+        "interpretation": "calibrate the implemented estimated-auto-spectrum numerator; fitted M is not a literal Welch-segment count",
+        "diagnostics": "separate auto, real-cross, imaginary-cross and all-entry required M; no frequency-dependent M fitted",
+        "validation": "fresh held-out baseline, long-period and weak-wave records; fixed training M; no inverse or wave-truth scoring",
+        "adoption": "do not apply an auto-calibrated value globally if the cross-spectral variance approximation is incompatible",
+        "scope": "preserve existing forward/inverse assumptions; no independent-model overhaul in this study",
+        "source_fingerprint": "4c5522ddade4dfc0ccd4a172ca28d17474327c77e55583f9e731b7fdb6543542",
+        "inverse_source_sha256": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+        "native_generator_sha256": "09fdfab8b37cfa4c1d9ec60e00febff8979dfbe0cb953ce865ca9e9250a74c9d"
+      },
+      "training_group": "train_baseline",
+      "M": 8.785033150237455,
+      "M_ci95": [
+        8.601967109615801,
+        8.991282577884752
+      ],
+      "effective_averages": 7.785033150237455,
+      "groups": {
+        "test_baseline": {
+          "case": "baseline",
+          "seed_start": 220000,
+          "records": 200
+        },
+        "test_long_period": {
+          "case": "long_period",
+          "seed_start": 221000,
+          "records": 200
+        },
+        "test_weak_waves": {
+          "case": "weak_waves",
+          "seed_start": 222000,
+          "records": 200
+        }
+      },
+      "methods": [
+        "existing_2.5",
+        "calibrated_equal",
+        "coherence_corrected"
+      ],
+      "bootstrap": 1000,
+      "decision": "fixed baseline-auto training M; no test fitting, inverse, or wave-truth inputs",
+      "primary": "median absolute log variance-ratio error across full-band cross entries; report signed bias and per-family results too",
+      "tolerance": "+/-10 percent for pooled median variance ratios; exploratory pointwise intervals are not simultaneous",
+      "candidate": "auto = a^2/M; cross Re/Im = [(M-1)/(2*(M-2))*(a*b-|z|^2) + Re(z)^2 or Im(z)^2]/M",
+      "interpretation": "M remains the fitted implemented auto denominator; complex-Wishart effective averages L=M-1; no extra fitted parameter",
+      "candidate_sha256": "f0ed03673d38cbf463bf6ee4359d54aecc043ca34140f9168ae775aae07bf74b",
+      "native_generator_sha256": "09fdfab8b37cfa4c1d9ec60e00febff8979dfbe0cb953ce865ca9e9250a74c9d"
+    },
+    "M": 8.785033150237455,
+    "tau": 5.0,
+    "groups": {
+      "baseline": {
+        "seed_start": 230000,
+        "records": 200,
+        "sea": {
+          "Hs": 1.7,
+          "Tp": 8
+        }
+      },
+      "long_period": {
+        "seed_start": 231000,
+        "records": 200,
+        "sea": {
+          "Hs": 1.7,
+          "Tp": 12
+        }
+      },
+      "weak_waves": {
+        "seed_start": 232000,
+        "records": 200,
+        "sea": {
+          "Hs": 0.5,
+          "Tp": 8
+        }
+      }
+    },
+    "methods": [
+      "existing_2.5",
+      "calibrated_equal",
+      "coherence_corrected"
+    ],
+    "headings": [
+      12,
+      36
+    ],
+    "primary_headings": 12,
+    "bootstrap": 1000,
+    "inverse_sha256": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+    "batch_sha256": "3013070c16fe03d23de4d5dbba8c33769a32e53acfec72e95f3c9f409eb502b9",
+    "native_generator_sha256": "09fdfab8b37cfa4c1d9ec60e00febff8979dfbe0cb953ce865ca9e9250a74c9d",
+    "primary_metrics": [
+      "hs_abs_pct",
+      "spectrum_nrmse",
+      "direction_abs_deg",
+      "direction_l1",
+      "m0_cover95"
+    ],
+    "additional": "directional NRMSE, negative power, pointwise spectrum/direction/active-bin coverage, 95th percentile and worst errors, numerical checks",
+    "truth": "ensemble wave energy histogrammed into retained Welch cells; directions grouped to nearest inverse heading; full-sea Hs reported separately",
+    "scoring": "identical fresh spectra across methods; 1000 paired whole-record bootstrap draws for error differences; exact binomial intervals for scalar 95% coverage",
+    "decision": "no retuning; report improvement only with paired evidence; distinguish parameter recovery from conditional uncertainty; no production adoption by this script",
+    "physics": "same existing shared BEM/generator assumptions as main; linear inverse versus native nonlinear time simulation; no independent-physics validation"
+  },
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "groups": {
+    "baseline": {
+      "seed_start": 240000,
+      "records": 200
+    },
+    "long_period": {
+      "seed_start": 241000,
+      "records": 200
+    },
+    "weak_waves": {
+      "seed_start": 242000,
+      "records": 200
+    }
+  },
+  "headings": [
+    12,
+    36
+  ],
+  "methods": [
+    "diagonal",
+    "same_frequency",
+    "joint_hann"
+  ],
+  "covariance_sha256": "73d4d7e33b72d2bcd6191d4b059e3e6ab4d92ef60928cbe6428ab8cebd7deae3",
+  "native_generator_sha256": "09fdfab8b37cfa4c1d9ec60e00febff8979dfbe0cb953ce865ca9e9250a74c9d",
+  "inverse_sha256": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+  "correlation": "full Wishart Hermitian-basis factor from each measured sensor correlation matrix; row-normalised to retain fixed-M variances",
+  "stabilisation": "shrink sensor correlation toward identity with clipped estimated complex-Wishart offdiagonal risk / measured squared offdiagonal norm; no inverse tuning",
+  "frequency": "exact white/local-flat Hann overlap power correlation, aligned through Hermitian spectral-square-root factors; approximate for varying coloured spectra",
+  "calibration": "only baseline sensor records 207000--207199 set units for fixed sensor-level probes; covariance estimator itself uses each record, M and Welch settings only",
+  "comparison": "diagonal versus correlated entries only versus jointly correlated entries/frequencies; prior scales identical across methods",
+  "validation": "20 fixed sensor-only projections first, then band Hs, spectrum/direction errors, negative power, exact binomial coverage; 1000 paired record bootstrap draws",
+  "decision": "no retuning after validation; no production, report or Drive writes; no proof of physical independence from fresh seeds"
+}

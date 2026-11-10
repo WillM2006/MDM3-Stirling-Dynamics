@@ -1,5 +1,10 @@
 # Frozen inverse recovery check
 
+Follow-up: [fixed-M correlated covariance experiment](correlated_covariance.md)
+tests within-frequency and joint Hann correlations on another 600 fresh
+records. That first plug-in candidate is also rejected; its diagnostic and
+the later merge/regeneration/report handoff are documented there.
+
 **Do not adopt M = 8.785 plus the corrected variance formula as a drop-in
 inverse change.** The sensor marginal variances are better calibrated, but
 this does not make the current diagonal Gaussian likelihood adequate.
