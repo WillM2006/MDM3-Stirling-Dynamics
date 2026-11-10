@@ -1,5 +1,8 @@
 # Wave-frequency resolution before calibrating M
 
+Follow-up: [uniform frequency placement and refinement](variance_uniform.md)
+tests the proposed alternative grid with the same sea spectrum and energy.
+
 This experiment asks whether the sensor spectra stop changing as the generated
 wave-frequency grid is refined. It does not select M or fit the inverse.
 

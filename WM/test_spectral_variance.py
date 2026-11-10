@@ -95,6 +95,43 @@ class SpectralVarianceTests(unittest.TestCase):
         self.assertAlmostEqual(result["fraction_intervals_outside_tolerance"], 1/3)
         self.assertAlmostEqual(result["fraction_point_estimates_within_tolerance"], 2/3)
 
+    def test_uniform_grid_preserves_energy_directions_and_phases(self):
+        from sea import Sea
+        from variance_uniform import uniform_grid
+        for count in [3200, 6400]:
+            sub = Sea(n_freq=count, Hs=1.7, Tp=8, s=10, gamma=3.3, seed=104000)
+            energy = np.sum(sub.wave_amplitudes**2) / 2
+            phase, directions = sub.phi.copy(), sub.D.copy()
+            uniform_grid(sub)
+            np.testing.assert_allclose(np.diff(sub.f), np.diff(sub.f)[0], rtol=0, atol=1e-15)
+            np.testing.assert_allclose(np.sum(sub.wave_amplitudes**2)/2, energy, rtol=1e-14)
+            np.testing.assert_allclose(np.sum(sub.S_f*sub.delta_f), energy, rtol=1e-14)
+            np.testing.assert_array_equal(sub.phi, phase)
+            np.testing.assert_array_equal(sub.D, directions)
+            self.assertTrue(np.isfinite(sub.wave_amplitudes).all())
+
+    def test_uniform_zoom_sums_match_direct_sums_over_full_record(self):
+        from variance_uniform import uniform_projection
+        frequencies = np.linspace(.1, 2, 6400, endpoint=False) + .95/6400
+        times = np.arange(78001) * .05
+        rng = np.random.default_rng(891)
+        coefficients = rng.normal(size=(6400, 3)) + 1j*rng.normal(size=(6400, 3))
+        actual = uniform_projection(frequencies, times, coefficients)
+        indices = np.r_[0, 1, 1201, 39000, 78000, rng.integers(0, len(times), 80)]
+        expected = np.real(np.exp(-1j*times[indices, None]*frequencies) @ coefficients)
+        np.testing.assert_allclose(actual[indices], expected, rtol=2e-9, atol=1e-8)
+        frequencies[10] += .001
+        with self.assertRaisesRegex(ValueError, "uniform frequencies"):
+            uniform_projection(frequencies, times, coefficients)
+
+    def test_force_check_scales_roundoff_but_rejects_material_errors(self):
+        from variance_convergence import check_projected_forcing
+        coefficients = np.full((100, 2), 1e5, dtype=complex)
+        expected = np.array([0., 2e5])
+        check_projected_forcing(expected + 1e-5, expected, coefficients)
+        with self.assertRaises(AssertionError):
+            check_projected_forcing(expected + 1., expected, coefficients)
+
     def test_resolution_analysis_recovers_known_mean_and_variance_scaling(self):
         import csv
         import json
@@ -122,6 +159,9 @@ class SpectralVarianceTests(unittest.TestCase):
                 if row["coarse_grid"] == "800" and row["fine_grid"] == "3200":
                     expected = 1.2 if row["metric"] == "mean" else 1.44
                     self.assertAlmostEqual(float(row["median_ratio"]), expected)
+            analyse(root, root, pairs=[(800, 3200)], prefix="subset", plotter=lambda *args: None)
+            with (root / "subset_summary.csv").open() as stream:
+                self.assertEqual(len(list(csv.DictReader(stream))), 45)
 
 
 if __name__ == "__main__":

@@ -91,6 +91,12 @@ def harmonic_projection(waves, coefficients):
     return result
 
 
+def check_projected_forcing(actual, expected, coefficients):
+    # Scale roundoff by force/torque RMS; instantaneous cancellation is ill-conditioned.
+    scale = np.maximum(np.sqrt(np.sum(abs(coefficients)**2, axis=0) / 2), 1.)
+    np.testing.assert_allclose(actual / scale, expected / scale, rtol=2e-10, atol=1e-10)
+
+
 def save_carrier(path, frequencies, times, chunk=1024):
     """Keep large, deterministic time carriers on disk, shared by workers."""
     temporary = path.with_suffix(".tmp")
@@ -117,7 +123,7 @@ def preprocess(measured):
         return iw.read_channels(".", iw.CHANNELS)
 
 
-def simulate_record(task, lengths=None):
+def simulate_record(task, lengths=None, grid_transform=None, projection=None):
     global carrier, carrier_grid, checks_done
     grid, seed, output = task
     if lengths is None:
@@ -129,22 +135,27 @@ def simulate_record(task, lengths=None):
     sub.params = base.params.copy()
     sea.Sea.__init__(sub, n_freq=grid, n_dir=36, Hs=1.7, Tp=8, gamma=3.3,
                      s=10, direction=np.pi / 2, seed=seed)
+    if grid_transform is not None:
+        grid_transform(sub)
     sub.build_excitation()
     duration = max(lengths) + 300
     half_time = np.arange(2 * int(duration / .1) + 1) * .05
-    if carrier_grid != (grid, duration):
+    if projection is not None:
+        carrier, carrier_grid = None, None
+    elif carrier_grid != (grid, duration):
         saved = Path(output) / f"carrier-{grid}-{duration}.npy"
         carrier = (np.load(saved, mmap_mode="r") if saved.exists() else
                    np.exp(-1j * half_time[:, None] * sub.w))
         if carrier.shape != (len(half_time), grid) or carrier.dtype != np.complex128:
             raise ValueError("time carrier does not match the simulation grid")
         carrier_grid = grid, duration
-    if isinstance(carrier, np.memmap):
+    if projection is not None or isinstance(carrier, np.memmap):
         positions = [sub.centre + [0, 0, -.2] + r for r in
                      [*sensors.PRESSURE_SENSORS.values(), sensors.R_DEPTH]]
         coefficients = np.column_stack([sub.F_hat.sum(1), *[
             pressure_coefficient(sub, sub.wave_amplitudes, *position) for position in positions]])
-        projected = harmonic_projection(carrier, coefficients)
+        projected = (projection(sub.w, half_time, coefficients) if projection is not None
+                     else harmonic_projection(carrier, coefficients))
         forcing = sensors.ramp(half_time)[:, None] * projected[:, :6]
         pressures = sensors.RHO * sensors.G * sensors.ramp(half_time[::2])[:, None] * projected[::2, 6:]
         sub.pressure_cache = {tuple(position): pressures[:, i] for i, position in enumerate(positions)}
@@ -152,9 +163,13 @@ def simulate_record(task, lengths=None):
         forcing = sensors.ramp(half_time)[:, None] * np.real(carrier @ sub.F_hat.sum(1))
     original = sub.excitation
     for index in [1, 1201, len(half_time) // 2, len(half_time) - 1]:
-        np.testing.assert_allclose(forcing[index], original(half_time[index], 0, 0), rtol=2e-10, atol=1e-5)
+        expected = original(half_time[index], 0, 0)
+        if projection is None:
+            np.testing.assert_allclose(forcing[index], expected, rtol=2e-10, atol=1e-5)
+        else:
+            check_projected_forcing(forcing[index], expected, sub.F_hat.sum(1))
     sub.excitation = lambda t, x, y: forcing[int(round(t / .05))]
-    sub.time_carrier = carrier[::2]
+    sub.time_carrier = carrier[::2] if carrier is not None else []
     t, history = sub.simulate(duration)
     if not np.isfinite(history).all():
         raise ValueError("nonfinite hull trajectory")

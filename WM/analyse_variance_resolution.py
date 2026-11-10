@@ -26,7 +26,7 @@ def comparison(values, reference, draws, reference_draws, tolerance):
     return row, ratio, low, high
 
 
-def analyse(data, output):
+def analyse(data, output, pairs=PAIRS, prefix="resolution", plotter=None):
     protocol = json.loads((data / "protocol.json").read_text())
     n = protocol["seeds"]
     weights = np.random.default_rng(781024).multinomial(n, np.full(n, 1/n),
@@ -58,7 +58,7 @@ def analyse(data, output):
             print(f"Analysed {grid} frequencies, {length} s, {n} seeds", flush=True)
     summary, details = [], []
     for length in protocol["usable_lengths"]:
-        for coarse, fine in PAIRS:
+        for coarse, fine in pairs:
             a, b = cases[coarse, length], cases[fine, length]
             for metric, columns, family in [("mean", autos, "auto"),
                                              ("variance", autos, "auto"),
@@ -81,10 +81,10 @@ def analyse(data, output):
                                             component=labels[column], ratio=ratio[i, j],
                                             ci95_low=low[i, j], ci95_high=high[i, j]))
     output.mkdir(parents=True, exist_ok=True)
-    write_csv(output / "resolution_summary.csv", summary)
-    write_csv(output / "resolution_frequencies.csv", details)
-    (output / "resolution_protocol.json").write_text(json.dumps(protocol, indent=2) + "\n")
-    plot(cases, f, autos, crosses, protocol, output)
+    write_csv(output / f"{prefix}_summary.csv", summary)
+    write_csv(output / f"{prefix}_frequencies.csv", details)
+    (output / f"{prefix}_protocol.json").write_text(json.dumps(protocol, indent=2) + "\n")
+    (plotter or plot)(cases, f, autos, crosses, protocol, output)
 
 
 def plot(cases, f, autos, crosses, protocol, output):
