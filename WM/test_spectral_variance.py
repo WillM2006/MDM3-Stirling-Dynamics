@@ -152,6 +152,77 @@ class SpectralVarianceTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             hybrid_grid(sub, 1.1)
 
+    def test_m_calibration_records_use_actual_variance_numerators(self):
+        from calibrate_m import spectral_record
+        samples = np.random.default_rng(83).normal(size=(1800,9))
+        record = spectral_record(samples)
+        self.assertEqual(record["observed"].shape,(53,81))
+        pairs = iw.stack_pairs(9)
+        expected = np.stack([iw.noise_variances(s,pairs,1.) for s in record["spectral"]])
+        np.testing.assert_array_equal(record["numerator"],expected)
+        np.testing.assert_allclose(record["numerator"]/2.5,
+                                   np.stack([iw.noise_variances(s,pairs,2.5) for s in record["spectral"]]))
+
+    def test_m_fit_recovers_known_value_and_preserves_units(self):
+        from analyse_m_calibration import moments,fitted_m,families
+        rng=np.random.default_rng(678)
+        values=rng.normal(size=(40,5,81))+3
+        q=np.broadcast_to(7.25*values.var(0,ddof=1),values.shape)
+        weights=rng.multinomial(40,np.full(40,1/40),size=100)/40
+        original=moments(values,q,weights)
+        m,draws=fitted_m(original,families()["auto"])
+        self.assertAlmostEqual(m,7.25)
+        scale=np.exp(rng.uniform(-6,6,size=(5,81)))
+        changed=moments(values*scale,q*scale**2,weights)
+        mm,dd=fitted_m(changed,families()["auto"])
+        self.assertAlmostEqual(mm,m)
+        np.testing.assert_allclose(dd,draws,rtol=1e-12)
+        actual_auto=moments(values,values**2,weights)
+        code_m,_=fitted_m(actual_auto,families()["auto"])
+        equivalent=np.median((actual_auto["mean"]**2/actual_auto["variance"])[:,families()["auto"]])
+        self.assertAlmostEqual(code_m-equivalent,39/40)
+
+    def test_m_analysis_keeps_training_fit_fixed_on_miscalibrated_holdout(self):
+        import csv,json
+        from analyse_m_calibration import analyse
+        rng=np.random.default_rng(679)
+        values=rng.uniform(1,4,size=(12,5,81))
+        q=np.broadcast_to(7.25*values.var(0,ddof=1),values.shape)
+        groups={name:dict(case=name,seed_start=start,records=12) for name,start in
+                [("train_baseline",0),("test_baseline",100),("test_long_period",200),("test_weak_waves",300)]}
+        protocol=dict(modes={"uniform6400":6400,"current40":40},groups=groups,bootstrap=20,
+                      current40_groups=["train_baseline","test_baseline"])
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            (root/"protocol.json").write_text(json.dumps(protocol))
+            for mode in protocol["modes"]:
+                for group,settings in groups.items():
+                    if mode=="current40" and group not in protocol["current40_groups"]:
+                        continue
+                    directory=root/mode/group
+                    directory.mkdir(parents=True)
+                    for i in range(12):
+                        # Deliberate held-out variance error must remain visible after fitting.
+                        observed=values[i]*(3 if group=="test_baseline" else 1)
+                        np.savez(directory/f"seed-{settings['seed_start']+i}.npz",f=[.05,.07,.125,.2,.28],
+                                 observed=observed,numerator=q[i])
+            with patch("analyse_m_calibration.plot"),patch("builtins.print"):
+                analyse(root,root)
+            with (root/"m_calibration_fits.csv").open() as stream:
+                fits=list(csv.DictReader(stream))
+            self.assertEqual(len(fits),8)
+            for row in fits:
+                self.assertAlmostEqual(float(row["M"]),7.25)
+            with (root/"m_calibration_validation.csv").open() as stream:
+                rows=list(csv.DictReader(stream))
+            for row in rows:
+                if row["method"]=="calibrated" and row["group"]=="test_baseline":
+                    self.assertAlmostEqual(float(row["median_predicted_over_observed"]),1/9)
+            protocol["groups"]["test_baseline"]["seed_start"]=0
+            (root/"protocol.json").write_text(json.dumps(protocol))
+            with self.assertRaisesRegex(ValueError,"seeds overlap"):
+                analyse(root,root)
+
     def test_choice_analysis_recovers_known_scaling_for_both_experiments(self):
         import csv
         import json

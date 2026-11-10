@@ -1,5 +1,8 @@
 # Choosing the wave-frequency grid
 
+Follow-up: [native-duration M calibration with untouched validation](m_calibration.md)
+estimates the implemented variance scale while retaining the existing inverse assumptions.
+
 Two questions need different evidence. A count-convergence test asks how many
 components are enough within one grid family. A placement test asks why moving
 the components changes the result at a fixed count. Neither test adjusts M or
