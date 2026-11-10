@@ -1,0 +1,11 @@
+{
+  "correlated_spectral.py": "73d4d7e33b72d2bcd6191d4b059e3e6ab4d92ef60928cbe6428ab8cebd7deae3",
+  "check_correlated_covariance.py": "d145d2674056bd2ccd4094c5c1586537389a19d6490e0736ed9fac9224cc422e",
+  "analyse_correlated_covariance.py": "6b23a4ef6648f259a99f23f7f13725dabced0bd39e0d62638a5b0ab18c4677e2",
+  "test_correlated_spectral.py": "828478b3bfc73a958fc344259c7b5aab146abd8523a58e3de95dbfde81f732af",
+  "stage": "rules frozen before inspecting fresh sensor-probe or inverse outcomes",
+  "record_count": 600,
+  "records_sha256": "9bb404c148e6b5faf5984e31d1d83d942b4a061e15e850fa3be7b286bbe87d8e",
+  "diagnose_same_record_covariance.py": "520e74936219c9279c988a6b0b048eb6f4dda2489a3dcd442c47358dafe7095b",
+  "diagnostic_scope": "post-validation reciprocal baseline covariance exchange; 100 pairs; not a deployable or validated estimator"
+}
