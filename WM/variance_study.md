@@ -4,6 +4,9 @@ The question is whether the uncertainty in a Welch spectrum can be estimated
 from the recording itself, without choosing M using the true sea state.
 This branch adds an experiment; it does not change the inverse or M = 2.5.
 
+The larger [wave-grid and recording-length study](variance_convergence.md)
+reports the subsequent 96-seed convergence checks.
+
 ## What was compared
 
 - `fixed_2.5`: the existing plug-in variance formulas.
@@ -109,22 +112,6 @@ are not committed.
 
 ## Decision
 
-Keep the production inverse and its weights unchanged. Do not merge the
-segment-based weights as a replacement. Next, check convergence with wave-grid
-density and record length, then validate any candidate uncertainty rule with a
-different response model using the known 90 m geometry. Freeze that rule before
-testing wave recovery and interval coverage on untouched cases.
-
-The next experiment should vary wave-frequency count through 40, 100, 200, 400
-and 800 while holding the hull, sea spectrum, noise settings, recording duration,
-200 s Welch segments and hydrodynamic response grid fixed. Measure convergence
-of the mean spectra and repeat-record variances at individual frequencies and
-channels, as well as the segment-variance calibration ratio. A better ratio alone
-does not prove that the simulated observations have converged.
-
-After that, vary usable recording length separately, for example 900, 1800 and
-3600 s, retaining 200 s segments. Set a practical convergence tolerance before
-examining results, and use enough independent realisations to distinguish that
-tolerance from Monte Carlo uncertainty. Overlapping broad confidence intervals
-are not evidence of convergence. Keep inverse weights frozen throughout this
-generator check; choose discretisation by convergence, not wave-recovery error.
+Keep the production inverse and its weights unchanged. The
+[convergence results](variance_convergence.md) support this decision and explain
+the remaining resolution and uncertainty checks before any replacement is used.
