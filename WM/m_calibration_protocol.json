@@ -1,0 +1,73 @@
+{
+  "base_main": "caaaf415dbe7bd372187758fe542c69999913d3e",
+  "modes": {
+    "current40": 40,
+    "uniform6400": 6400
+  },
+  "cases": {
+    "baseline": {
+      "Hs": 1.7,
+      "Tp": 8
+    },
+    "long_period": {
+      "Hs": 1.7,
+      "Tp": 12
+    },
+    "weak_waves": {
+      "Hs": 0.5,
+      "Tp": 8
+    }
+  },
+  "groups": {
+    "train_baseline": {
+      "case": "baseline",
+      "seed_start": 207000,
+      "records": 200
+    },
+    "test_baseline": {
+      "case": "baseline",
+      "seed_start": 208000,
+      "records": 200
+    },
+    "test_long_period": {
+      "case": "long_period",
+      "seed_start": 209000,
+      "records": 200
+    },
+    "test_weak_waves": {
+      "case": "weak_waves",
+      "seed_start": 210000,
+      "records": 200
+    }
+  },
+  "current40_groups": [
+    "train_baseline",
+    "test_baseline"
+  ],
+  "native_duration_s": 1200,
+  "discarded_s": 300,
+  "usable_s": 900,
+  "hydrodynamic_frequencies": 40,
+  "length_m": 90,
+  "radius_m": 5.36,
+  "depth_m": 15,
+  "speed_m_s": 0,
+  "directions": 36,
+  "gamma": 3.3,
+  "spreading_s": 10,
+  "direction_rad": 1.5707963267948966,
+  "sample_rate_Hz": 2,
+  "welch_seconds": 200,
+  "overlap": 0.5,
+  "bootstrap": 1000,
+  "fit": "baseline training only: median over auto-spectral cells of mean(numerator at M=1) / repeat-record variance",
+  "primary_family": "auto: exact auto-spectral variance form; real/imaginary cross approximations are validated separately",
+  "interpretation": "calibrate the implemented estimated-auto-spectrum numerator; fitted M is not a literal Welch-segment count",
+  "diagnostics": "separate auto, real-cross, imaginary-cross and all-entry required M; no frequency-dependent M fitted",
+  "validation": "fresh held-out baseline, long-period and weak-wave records; fixed training M; no inverse or wave-truth scoring",
+  "adoption": "do not apply an auto-calibrated value globally if the cross-spectral variance approximation is incompatible",
+  "scope": "preserve existing forward/inverse assumptions; no independent-model overhaul in this study",
+  "source_fingerprint": "4c5522ddade4dfc0ccd4a172ca28d17474327c77e55583f9e731b7fdb6543542",
+  "inverse_source_sha256": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+  "native_generator_sha256": "09fdfab8b37cfa4c1d9ec60e00febff8979dfbe0cb953ce865ca9e9250a74c9d"
+}
