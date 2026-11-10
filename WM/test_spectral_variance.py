@@ -132,6 +132,56 @@ class SpectralVarianceTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             check_projected_forcing(expected + 1., expected, coefficients)
 
+    def test_hybrid_grid_endpoints_preserve_spectrum_energy_and_phases(self):
+        from sea import Sea
+        from variance_uniform import uniform_grid
+        from variance_choice import hybrid_grid
+        original = Sea(n_freq=3200, Hs=1.7, Tp=8, gamma=3.3, s=10, seed=104000)
+        expected = Sea(n_freq=3200, Hs=1.7, Tp=8, gamma=3.3, s=10, seed=104000)
+        uniform_grid(expected)
+        for fraction in [0, .5, 1]:
+            sub = Sea(n_freq=3200, Hs=1.7, Tp=8, gamma=3.3, s=10, seed=104000)
+            hybrid_grid(sub, fraction)
+            np.testing.assert_allclose(np.sum(sub.wave_amplitudes**2), np.sum(original.wave_amplitudes**2), rtol=1e-14)
+            np.testing.assert_array_equal(sub.phi, original.phi)
+            self.assertTrue(np.all(np.diff(sub.f) > 0))
+            if fraction in (0, 1):
+                target = original if fraction == 0 else expected
+                np.testing.assert_allclose(sub.f, target.f, atol=1e-15)
+                np.testing.assert_allclose(sub.wave_amplitudes, target.wave_amplitudes, rtol=2e-11, atol=1e-14)
+        with self.assertRaises(ValueError):
+            hybrid_grid(sub, 1.1)
+
+    def test_choice_analysis_recovers_known_scaling_for_both_experiments(self):
+        import csv
+        import json
+        from analyse_variance_choice import analyse
+        from variance_choice import CASES
+        scales = dict(zip(CASES, [1.2, 1.1, 1.05, 1.01, 1., 1.5, 1.2]))
+        values = np.random.default_rng(89).uniform(1, 4, size=(8, 5, 81))
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            protocol = dict(cases=CASES, seeds=8, seed_start=0, bootstrap=20, tolerance=.1,
+                            usable_lengths=[900, 1800, 3600])
+            (root/"protocol.json").write_text(json.dumps(protocol))
+            for name, count in CASES.items():
+                for length in protocol["usable_lengths"]:
+                    directory = root/name/f"n{count}_t{length}"
+                    directory.mkdir(parents=True)
+                    for seed in range(8):
+                        np.savez(directory/f"seed-{seed}.npz", f=[.05, .07, .125, .2, .28],
+                                 observed=values[seed]*scales[name])
+            with patch("analyse_variance_choice.plot"), patch("builtins.print"):
+                analyse(root, root)
+            with (root/"choice_summary.csv").open() as stream:
+                rows = list(csv.DictReader(stream))
+            self.assertEqual(len(rows), 270)
+            for row in rows:
+                expected_ratio = scales[row["first_case"]]/scales[row["reference_case"]]
+                if row["metric"] == "variance":
+                    expected_ratio **= 2
+                self.assertAlmostEqual(float(row["median_ratio"]), expected_ratio)
+
     def test_resolution_analysis_recovers_known_mean_and_variance_scaling(self):
         import csv
         import json

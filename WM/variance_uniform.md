@@ -1,5 +1,9 @@
 # Uniform wave-frequency grids before calibrating M
 
+Follow-up: [frequency-count convergence and placement transition](frequency_grid_choice.md)
+tests 800--12800 uniform components and a 50/50 intermediate grid, with plots
+that distinguish a count justification from a placement explanation.
+
 This compares two changes separately: moving 3200 wave components from
 equal-energy bins to uniformly spaced frequency bins, then refining the uniform
 grid from 3200 to 6400 components. The inverse and M are not fitted or changed.

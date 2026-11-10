@@ -1,0 +1,100 @@
+{
+  "base_main": "caaaf415dbe7bd372187758fe542c69999913d3e",
+  "grids": [
+    "uniform800",
+    "uniform1600",
+    "uniform3200",
+    "uniform6400",
+    "uniform12800",
+    "equal3200",
+    "half3200"
+  ],
+  "usable_lengths": [
+    900,
+    1800,
+    3600
+  ],
+  "length_test_grids": [
+    "uniform800",
+    "uniform1600",
+    "uniform3200",
+    "uniform6400",
+    "uniform12800",
+    "equal3200",
+    "half3200"
+  ],
+  "seed_start": 104000,
+  "seeds": 96,
+  "bootstrap": 1000,
+  "tolerance": 0.1,
+  "fixed_settings": {
+    "Hs": 1.7,
+    "Tp": 8,
+    "gamma": 3.3,
+    "s": 10,
+    "direction_rad": 1.5707963267948966,
+    "depth_m": 15,
+    "length_m": 90,
+    "radius_m": 5.36,
+    "speed_m_s": 0,
+    "generation_directions": 36,
+    "hydrodynamic_frequencies": 40,
+    "settle_s": 300,
+    "sample_rate_Hz": 2,
+    "welch_seconds": 200
+  },
+  "inverse_weights": "unchanged; no inverse fitting or truth-dependent variance rules",
+  "length_comparison": "nested prefixes of the same preprocessed long record; noise and phases paired",
+  "processing": "same physical equations; checked zoom sums for uniform grids, cached direct sums for the midpoint grid",
+  "source_fingerprint": "4c5522ddade4dfc0ccd4a172ca28d17474327c77e55583f9e731b7fdb6543542",
+  "question": "Which uniform frequency count is stable, and what does placement change at fixed count?",
+  "reference": "Count comparisons use N versus 2N; placement uses uniform3200 as a comparison, not truth",
+  "reused": "equal3200, uniform3200 and uniform6400; same seeds and processing",
+  "decision": "Preserve 10% band and report confidence; no forced plateau, fitted smoothing or inverse-based selection",
+  "frequency_grid": "uniform count sweep; equal-energy, half and uniform placement at fixed count 3200",
+  "bin_weights": "integrate the same 5000-point JONSWAP CDF as main; retain total energy and direction weights",
+  "grid_transform_sha256": "10de31992f6570050df2cdd572f9cc4d8ec61abc5f19fe9f66080c43235870cb",
+  "projection_sha256": "21d60729e02e0ecf6513f431df2a3427dcd11db7fc696465bfeddd89cd4c47d9",
+  "comparisons": [
+    [
+      "uniform800",
+      "uniform1600"
+    ],
+    [
+      "uniform1600",
+      "uniform3200"
+    ],
+    [
+      "uniform3200",
+      "uniform6400"
+    ],
+    [
+      "uniform6400",
+      "uniform12800"
+    ]
+  ],
+  "cases": {
+    "uniform800": 800,
+    "uniform1600": 1600,
+    "uniform3200": 3200,
+    "uniform6400": 6400,
+    "uniform12800": 12800,
+    "equal3200": 3200,
+    "half3200": 3200
+  },
+  "uniform_counts": [
+    800,
+    1600,
+    3200,
+    6400,
+    12800
+  ],
+  "spacing_cases": {
+    "equal3200": 0.0,
+    "half3200": 0.5,
+    "uniform3200": 1.0
+  },
+  "candidate_count": 6400,
+  "hybrid_transform_sha256": "526ea0ad6d92d940896ea3f1f54bb5daeeefa7a3b435d79eef0d89017431d754",
+  "hybrid_definition": "convex combinations of equal-energy and uniform bin edges and centres; same integrated JONSWAP energy"
+}
