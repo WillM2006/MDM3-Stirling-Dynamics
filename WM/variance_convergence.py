@@ -56,7 +56,7 @@ def initialise_worker(cache):
     base.build_kernel()
     base.build_viscous_damping()
     base.build_controller()
-    carrier, carrier_grid, checks_done = None, None, False
+    carrier, carrier_grid, checks_done = None, None, set()
 
 
 def fast_gauss_markov(sigma, tau, fs, n):
@@ -69,10 +69,39 @@ def fast_gauss_markov(sigma, tau, fs, n):
 def fast_pressure(sub, amplitudes, x, y, z, t, chunk=1000):
     if np.ptp(x) > 1e-12 or np.ptp(y) > 1e-12:
         raise ValueError("cached pressure requires the fixed mean sensor positions")
-    coefficient = np.sum(amplitudes * np.exp(sub.k[:, None] * z + 1j *
-                         (sub.phi + sub.k[:, None] * (x[0] * sub.cos_theta + y[0] * sub.sin_theta))), axis=1)
+    key = (x[0], y[0], z)
+    if key in getattr(sub, "pressure_cache", {}) and len(t) == len(sub.pressure_cache[key]):
+        return sub.pressure_cache[key]
+    coefficient = pressure_coefficient(sub, amplitudes, *key)
     waves = sub.time_carrier if len(t) == len(sub.time_carrier) else np.exp(-1j * t[:, None] * sub.w)
     return sensors.RHO * sensors.G * sensors.ramp(t) * np.real(waves @ coefficient)
+
+
+def pressure_coefficient(sub, amplitudes, x, y, z):
+    return np.sum(amplitudes * np.exp(sub.k[:, None] * z + 1j *
+                  (sub.phi + sub.k[:, None] * (x * sub.cos_theta + y * sub.sin_theta))), axis=1)
+
+
+def harmonic_projection(waves, coefficients):
+    # Bound working memory: strided full-record pressure products can copy gigabytes.
+    result = np.empty((len(waves), coefficients.shape[1]))
+    for start in range(0, len(waves), 1024):
+        window = slice(start, start + 1024)
+        result[window] = np.real(waves[window] @ coefficients)
+    return result
+
+
+def save_carrier(path, frequencies, times, chunk=1024):
+    """Keep large, deterministic time carriers on disk, shared by workers."""
+    temporary = path.with_suffix(".tmp")
+    waves = np.lib.format.open_memmap(temporary, mode="w+", dtype=complex,
+                                     shape=(len(times), len(frequencies)))
+    for start in range(0, len(times), chunk):
+        window = slice(start, start + chunk)
+        waves[window] = np.exp(-1j * times[window, None] * frequencies)
+    waves.flush()
+    del waves
+    temporary.replace(path)
 
 
 def preprocess(measured):
@@ -88,10 +117,11 @@ def preprocess(measured):
         return iw.read_channels(".", iw.CHANNELS)
 
 
-def simulate_record(task):
+def simulate_record(task, lengths=None):
     global carrier, carrier_grid, checks_done
     grid, seed, output = task
-    lengths = LENGTHS if grid in (40, 800) else [900]
+    if lengths is None:
+        lengths = LENGTHS if grid in (40, 800) else [900]
     targets = [Path(output) / f"n{grid}_t{length}" / f"seed-{seed}.npz" for length in lengths]
     if all(path.exists() for path in targets):
         return grid, seed, "cached"
@@ -102,10 +132,24 @@ def simulate_record(task):
     sub.build_excitation()
     duration = max(lengths) + 300
     half_time = np.arange(2 * int(duration / .1) + 1) * .05
-    if carrier_grid != grid:
-        carrier = np.exp(-1j * half_time[:, None] * sub.w)
-        carrier_grid = grid
-    forcing = sensors.ramp(half_time)[:, None] * np.real(carrier @ sub.F_hat.sum(1))
+    if carrier_grid != (grid, duration):
+        saved = Path(output) / f"carrier-{grid}-{duration}.npy"
+        carrier = (np.load(saved, mmap_mode="r") if saved.exists() else
+                   np.exp(-1j * half_time[:, None] * sub.w))
+        if carrier.shape != (len(half_time), grid) or carrier.dtype != np.complex128:
+            raise ValueError("time carrier does not match the simulation grid")
+        carrier_grid = grid, duration
+    if isinstance(carrier, np.memmap):
+        positions = [sub.centre + [0, 0, -.2] + r for r in
+                     [*sensors.PRESSURE_SENSORS.values(), sensors.R_DEPTH]]
+        coefficients = np.column_stack([sub.F_hat.sum(1), *[
+            pressure_coefficient(sub, sub.wave_amplitudes, *position) for position in positions]])
+        projected = harmonic_projection(carrier, coefficients)
+        forcing = sensors.ramp(half_time)[:, None] * projected[:, :6]
+        pressures = sensors.RHO * sensors.G * sensors.ramp(half_time[::2])[:, None] * projected[::2, 6:]
+        sub.pressure_cache = {tuple(position): pressures[:, i] for i, position in enumerate(positions)}
+    else:
+        forcing = sensors.ramp(half_time)[:, None] * np.real(carrier @ sub.F_hat.sum(1))
     original = sub.excitation
     for index in [1, 1201, len(half_time) // 2, len(half_time) - 1]:
         np.testing.assert_allclose(forcing[index], original(half_time[index], 0, 0), rtol=2e-10, atol=1e-5)
@@ -114,16 +158,20 @@ def simulate_record(task):
     t, history = sub.simulate(duration)
     if not np.isfinite(history).all():
         raise ValueError("nonfinite hull trajectory")
-    if not checks_done:
+    if grid not in checks_done:
         tt = t[3000:3010]
         x, y = np.full(len(tt), 11.), np.full(len(tt), 2.)
         np.testing.assert_allclose(fast_pressure(sub, sub.wave_amplitudes, x, y, -15, tt),
                                    sensors.incident_pressure(sub, sub.wave_amplitudes, x, y, -15, tt), rtol=1e-10, atol=1e-7)
+        for position, pressure in getattr(sub, "pressure_cache", {}).items():
+            x, y = np.full(len(tt), position[0]), np.full(len(tt), position[1])
+            np.testing.assert_allclose(pressure[3000:3010], sensors.incident_pressure(
+                sub, sub.wave_amplitudes, x, y, position[2], tt), rtol=1e-10, atol=1e-7)
         sensors.rng = np.random.default_rng(seed)
         original_noise = sensors.gauss_markov(20, 900, 10, 1000)
         sensors.rng = np.random.default_rng(seed)
         np.testing.assert_allclose(fast_gauss_markov(20, 900, 10, 1000), original_noise, atol=1e-10)
-        checks_done = True
+        checks_done.add(grid)
     with patch.object(sensors, "incident_pressure", fast_pressure):
         true = sensors.true_signals(sub, sub.wave_amplitudes, t, history)
     sensors.rng = np.random.default_rng(seed)

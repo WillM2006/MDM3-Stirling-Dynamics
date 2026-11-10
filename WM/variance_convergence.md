@@ -1,5 +1,8 @@
 # Wave-grid convergence and effective averaging
 
+Follow-up: [refinement through 3200 frequencies](variance_resolution.md)
+checks the remaining resolution issue before calibrating M.
+
 ## Finding
 
 The current simulated sea does not support interpreting M as the number of

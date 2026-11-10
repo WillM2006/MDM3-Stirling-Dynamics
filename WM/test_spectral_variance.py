@@ -68,6 +68,61 @@ class SpectralVarianceTests(unittest.TestCase):
         np.testing.assert_allclose(interval(scaled_var / var), 9, atol=1e-12)
         np.testing.assert_allclose(interval(var / var), 1)
 
+    def test_saved_carrier_matches_direct_harmonic_sums(self):
+        from variance_convergence import save_carrier, harmonic_projection
+        times = np.arange(1051) * .05
+        frequencies = np.array([.1, .34, .82, 1.7])
+        coefficients = np.random.default_rng(19).normal(size=(4, 6)) * (1 + 2j)
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "waves.npy"
+            save_carrier(path, frequencies, times, chunk=7)
+            cached = np.load(path, mmap_mode="r")
+            direct = np.exp(-1j * times[:, None] * frequencies)
+            np.testing.assert_array_equal(cached, direct)
+            np.testing.assert_allclose(cached @ coefficients, direct @ coefficients)
+            np.testing.assert_allclose(cached[::2] @ coefficients, direct[::2] @ coefficients)
+            np.testing.assert_allclose(harmonic_projection(cached, coefficients), np.real(direct @ coefficients))
+
+    def test_resolution_comparison_separates_agreement_and_difference(self):
+        from analyse_variance_resolution import comparison
+        reference = np.ones((1, 3))
+        values = np.array([[1., 1.3, 1.05]])
+        draws = np.stack([values - .02, values + .02])
+        draws[:, 0, 2] = [.8, 1.3]
+        result, ratio, low, high = comparison(values, reference, draws,
+                                              np.ones_like(draws), .1)
+        self.assertAlmostEqual(result["fraction_intervals_within_tolerance"], 1/3)
+        self.assertAlmostEqual(result["fraction_intervals_outside_tolerance"], 1/3)
+        self.assertAlmostEqual(result["fraction_point_estimates_within_tolerance"], 2/3)
+
+    def test_resolution_analysis_recovers_known_mean_and_variance_scaling(self):
+        import csv
+        import json
+        from analyse_variance_resolution import analyse
+        rng = np.random.default_rng(75)
+        values = rng.uniform(1, 4, size=(8, 5, 81))
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            protocol = dict(seeds=8, seed_start=0, bootstrap=20, tolerance=.1,
+                            grids=[800, 1600, 3200], usable_lengths=[900, 1800, 3600])
+            (root / "protocol.json").write_text(json.dumps(protocol))
+            for grid, scale in [(800, 1.2), (1600, 1.1), (3200, 1)]:
+                for length in protocol["usable_lengths"]:
+                    directory = root / f"n{grid}_t{length}"
+                    directory.mkdir()
+                    for seed in range(8):
+                        np.savez(directory / f"seed-{seed}.npz", f=[.05, .1, .16, .26, .31],
+                                 observed=values[seed]*scale)
+            with patch("analyse_variance_resolution.plot"), patch("builtins.print"):
+                analyse(root, root)
+            with (root / "resolution_summary.csv").open() as stream:
+                rows = list(csv.DictReader(stream))
+            self.assertEqual(len(rows), 135)
+            for row in rows:
+                if row["coarse_grid"] == "800" and row["fine_grid"] == "3200":
+                    expected = 1.2 if row["metric"] == "mean" else 1.44
+                    self.assertAlmostEqual(float(row["median_ratio"]), expected)
+
 
 if __name__ == "__main__":
     unittest.main()
