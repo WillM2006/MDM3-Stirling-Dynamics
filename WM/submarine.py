@@ -141,6 +141,51 @@ class Submarine(Sea):
         self.A_sys = np.block([[Z, I], [-self.M_inv @ self.C_hydro, Z]])
 
 
+    def calculate_diffraction_pressure(self, omega, wave_direction):
+        """
+        Calculate complex diffraction pressure at all six
+        hull pressure sensors for a unit-amplitude incident wave.
+
+        Returns:
+            dict: Sensor name -> complex pressure amplitude (Pa)
+        """
+
+        # Sensor coordinates in the global frame
+        x_end = LENGTH / 2 - 5.0
+
+        sensor_positions = {
+            "P1": [x_end, 0.0, -self.depth - RADIUS],
+            "P2": [-x_end, 0.0, -self.depth - RADIUS],
+            "P3": [0.0, RADIUS, -self.depth],
+            "P4": [0.0, -RADIUS, -self.depth],
+            "P5": [0.0, 0.0, -self.depth + RADIUS],
+            "P6": [0.0, 0.0, -self.depth - RADIUS],
+        }
+
+        names = list(sensor_positions)
+        points = np.asarray(list(sensor_positions.values()))
+
+        solver = cpt.BEMSolver()
+
+        problem = cpt.DiffractionProblem(
+            body=self.body,
+            omega=omega,
+            wave_direction=wave_direction,
+            water_depth=np.inf,
+            rho=RHO,
+            g=G,
+            forward_speed=0.0
+        )
+
+        result = solver.solve(problem, keep_details=True)
+
+        pressures = np.asarray(
+            solver.compute_pressure(points, result)
+        ).reshape(-1)
+
+        return dict(zip(names, pressures))
+
+
     def build_excitation(self):
         """Combine the BEM excitation with the Sea's wave amplitudes and phases
            F_exc(t) = Re[ sum_nm F(w_n, theta_m) * a_nm * e^(i(k_n . x - w_n t + phi_nm)) ]
