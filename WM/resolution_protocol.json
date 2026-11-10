@@ -1,0 +1,46 @@
+{
+  "base_main": "caaaf415dbe7bd372187758fe542c69999913d3e",
+  "grids": [
+    800,
+    1600,
+    3200
+  ],
+  "usable_lengths": [
+    900,
+    1800,
+    3600
+  ],
+  "length_test_grids": [
+    800,
+    1600,
+    3200
+  ],
+  "seed_start": 104000,
+  "seeds": 96,
+  "bootstrap": 1000,
+  "tolerance": 0.1,
+  "fixed_settings": {
+    "Hs": 1.7,
+    "Tp": 8,
+    "gamma": 3.3,
+    "s": 10,
+    "direction_rad": 1.5707963267948966,
+    "depth_m": 15,
+    "length_m": 90,
+    "radius_m": 5.36,
+    "speed_m_s": 0,
+    "generation_directions": 36,
+    "hydrodynamic_frequencies": 40,
+    "settle_s": 300,
+    "sample_rate_Hz": 2,
+    "welch_seconds": 200
+  },
+  "inverse_weights": "unchanged; no inverse fitting or truth-dependent variance rules",
+  "length_comparison": "nested prefixes of the same preprocessed long record; noise and phases paired",
+  "processing": "same equations; memory-mapped time carriers share deterministic exponentials",
+  "source_fingerprint": "4c5522ddade4dfc0ccd4a172ca28d17474327c77e55583f9e731b7fdb6543542",
+  "question": "Are sensor spectral means and repeat-record variances stable under wave-grid refinement?",
+  "reference": "3200 is a comparison reference, not proven truth",
+  "reused": "800-frequency records: identical seeds, lengths, sources and processing",
+  "decision": "10% comparison band; report both agreement and Monte Carlo inconclusiveness; no inverse-based grid selection"
+}
