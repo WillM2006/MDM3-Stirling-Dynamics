@@ -30,6 +30,12 @@ means the average predicted variance equals the observed repeat-record variance.
 Summary ratios are medians across the nine auto-spectra and frequencies in the
 stated band. They do not establish joint covariance or posterior coverage.
 
+![Segment-based variance prediction and uncertainty](variance_study_calibration.png)
+
+The graph above shows this experiment directly. The earlier effective-M curves
+describe a different diagnostic and do not show how well segment-based variance
+prediction works.
+
 For the segment-based method over the full 0.05--0.31 Hz band:
 
 - Independent correlated Gaussian control: ratio 1.00, 95% interval 0.99--1.01.
@@ -41,12 +47,13 @@ The existing fixed-M weights gave a full-band median ratio of 1.62 in the
 baseline case. Replacing them with the segment-based estimate would therefore
 make the assumed uncertainty substantially too small in that experiment.
 
-The control shows that the estimator behaves sensibly for a continuous-spectrum
-Gaussian process. It does not work reliably for the current finite-component
-sea. Variation between segments of one realisation misses much of the variation
-between independent realisations. The denser wave grid reduces this discrepancy.
-This is a reason to investigate the generator's statistical convergence before
-using the new variance estimates in an inversion.
+The control supports the estimator for the tested continuous-spectrum Gaussian
+process. In the 40-frequency sea, variation between segments misses much of the
+variation between independent realisations. The denser wave grid reduces this
+discrepancy. This is consistent with limited frequency components providing too
+little independent information within a recording. Fixed phases alone are not
+an explanation: harmonic wave representations normally retain their phases.
+Two wave-grid densities do not establish convergence or exclude other effects.
 
 ## Conditions and uncertainty
 
@@ -83,10 +90,13 @@ other hulls, or posterior credible-interval coverage were tested.
 
 From the repository root, with NumPy and SciPy installed:
 
+The plotting command also requires Matplotlib.
+
 ```sh
 python -m unittest discover -s WM -p test_spectral_variance.py -v
 python WM/variance_study.py --control --out variance_output/control.csv
 python WM/variance_study.py --root /path/to/repeated/sensor/data --out variance_output/hull.csv
+python WM/plot_variance_study.py
 ```
 
 The input can be native per-run sensor CSV folders, grouped under a folder for
@@ -104,3 +114,17 @@ segment-based weights as a replacement. Next, check convergence with wave-grid
 density and record length, then validate any candidate uncertainty rule with a
 different response model using the known 90 m geometry. Freeze that rule before
 testing wave recovery and interval coverage on untouched cases.
+
+The next experiment should vary wave-frequency count through 40, 100, 200, 400
+and 800 while holding the hull, sea spectrum, noise settings, recording duration,
+200 s Welch segments and hydrodynamic response grid fixed. Measure convergence
+of the mean spectra and repeat-record variances at individual frequencies and
+channels, as well as the segment-variance calibration ratio. A better ratio alone
+does not prove that the simulated observations have converged.
+
+After that, vary usable recording length separately, for example 900, 1800 and
+3600 s, retaining 200 s segments. Set a practical convergence tolerance before
+examining results, and use enough independent realisations to distinguish that
+tolerance from Monte Carlo uncertainty. Overlapping broad confidence intervals
+are not evidence of convergence. Keep inverse weights frozen throughout this
+generator check; choose discretisation by convergence, not wave-recovery error.
