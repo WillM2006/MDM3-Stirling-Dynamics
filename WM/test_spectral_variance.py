@@ -163,6 +163,87 @@ class SpectralVarianceTests(unittest.TestCase):
         np.testing.assert_allclose(record["numerator"]/2.5,
                                    np.stack([iw.noise_variances(s,pairs,2.5) for s in record["spectral"]]))
 
+    def test_corrected_cross_variance_matches_complex_wishart(self):
+        from check_cross_variance import variance_terms,corrected_variances
+        rng=np.random.default_rng(736)
+        for count,coherence,phase in [(2,0.,0.),(8,.95,0.),(8,.95,np.pi/2),(8,.8,.7)]:
+            z=(rng.normal(size=(100000,count,2))+1j*rng.normal(size=(100000,count,2)))/np.sqrt(2)
+            z[:,:,1]=coherence*np.exp(1j*phase)*z[:,:,0]+np.sqrt(1-coherence**2)*z[:,:,1]
+            spectral=np.einsum("rki,rkj->rij",z.conj(),z)/count
+            residual,square=variance_terms(spectral)
+            predicted=corrected_variances(residual,square,count+1)
+            q=coherence*np.exp(1j*phase)
+            expected=np.array([1/count,(1+(q*q).real)/(2*count),
+                               (1-(q*q).real)/(2*count),1/count])
+            observed=np.stack([spectral[:,0,0].real,spectral[:,0,1].real,
+                               spectral[:,0,1].imag,spectral[:,1,1].real],axis=1)
+            np.testing.assert_allclose(predicted.mean(0)/expected,1,atol=.025)
+            np.testing.assert_allclose(observed.var(0,ddof=1)/expected,1,atol=.025)
+            self.assertTrue(np.all(predicted>=0))
+            scale=np.array([1e-3,1e3])
+            rr,ss=variance_terms(spectral*scale[:,None]*scale[None,:])
+            np.testing.assert_allclose(corrected_variances(rr,ss,count+1),
+                                       predicted*np.array([1e-12,1,1,1e12]),rtol=1e-10)
+
+    def test_corrected_cross_variance_rejects_invalid_input(self):
+        from check_cross_variance import variance_terms,corrected_variances
+        for m in [1,2,np.nan]:
+            with self.assertRaises(ValueError):
+                corrected_variances(np.ones((3,4)),np.ones((3,4)),m)
+        for matrix in [np.array([[1,2],[2,1]]),np.array([[1,1j],[1j,1]]),np.diag([0.,1.])]:
+            with self.assertRaises(ValueError):
+                variance_terms(matrix)
+        spectral=np.ones((2,2),dtype=complex)
+        r,s=variance_terms(spectral)
+        np.testing.assert_allclose(corrected_variances(r,s,9),[1/9,1/9,0,1/9])
+
+    def test_cross_validation_does_not_refit_to_test_errors(self):
+        import csv,hashlib,inspect,json
+        import check_cross_variance as cv
+        import calibrate_m as cm
+        import variance_convergence as vc
+        rng=np.random.default_rng(786)
+        f=np.array([.05,.07,.125,.2,.28])
+        settings={name:dict(seed_start=start,records=8) for name,start in
+                  [("test_baseline",0),("test_long_period",100),("test_weak_waves",200)]}
+        protocol=dict(M=9,bootstrap=20,groups=settings,
+                      candidate_sha256=hashlib.sha256((inspect.getsource(cv.variance_terms)+inspect.getsource(cv.corrected_variances)).encode()).hexdigest(),
+                      native_generator_sha256=hashlib.sha256(inspect.getsource(cm.native_samples).encode()).hexdigest(),
+                      parent_protocol=dict(source_fingerprint=vc.model_fingerprint(),
+                                           inverse_source_sha256=hashlib.sha256(Path(iw.__file__).read_bytes()).hexdigest()))
+        pairs=iw.stack_pairs(9)
+        records=[]
+        for _ in range(8):
+            z=(rng.normal(size=(5,8,9))+1j*rng.normal(size=(5,8,9)))/np.sqrt(2)
+            spectral=np.einsum("fki,fkj->fij",z.conj(),z)/8
+            records.append(dict(f=f,spectral=spectral,
+                                observed=np.stack([iw.data_vector(s,pairs) for s in spectral]),
+                                numerator=np.stack([iw.noise_variances(s,pairs,1) for s in spectral])))
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            (root/"protocol.json").write_text(json.dumps(protocol))
+            for group,setting in settings.items():
+                (root/group).mkdir()
+                for i,record in enumerate(records):
+                    values=dict(record)
+                    if group=="test_baseline":
+                        values["observed"]=record["observed"]*3
+                    np.savez(root/group/f"seed-{setting['seed_start']+i}.npz",**values)
+            with patch.object(cv,"training",return_value=({},f,9,np.full(20,9))),patch.object(cv,"plot"),patch("builtins.print"):
+                cv.analyse(root,root,root)
+            with (root/"cross_variance_validation.csv").open() as stream:
+                rows=list(csv.DictReader(stream))
+            self.assertEqual(len(rows),225)
+            for row in rows:
+                if row["group"]!="test_baseline":
+                    continue
+                reference=next(r for r in rows if r["group"]=="test_long_period" and
+                               all(r[k]==row[k] for k in ["method","family","band"]))
+                self.assertAlmostEqual(float(row["median_predicted_over_observed"])*9,
+                                       float(reference["median_predicted_over_observed"]))
+                if row["method"]!="existing_2.5":
+                    self.assertEqual(float(row["M"]),9)
+
     def test_m_fit_recovers_known_value_and_preserves_units(self):
         from analyse_m_calibration import moments,fitted_m,families
         rng=np.random.default_rng(678)
