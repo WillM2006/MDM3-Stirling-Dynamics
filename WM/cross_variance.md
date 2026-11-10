@@ -1,5 +1,10 @@
 # Checking the cross-spectral variance approximation
 
+**Follow-up:** [the frozen inverse recovery check](inverse_recovery.md) finds
+severe posterior undercoverage and worse directional-shape recovery. The
+marginal calibration below remains useful, but the proposed change should
+not be adopted as a drop-in fix to the diagonal inverse.
+
 The corrected formula substantially improves cross-spectral calibration on
 **600 fresh records**, using the previous **M = 8.785** unchanged. Median
 entrywise variance error factors fall from **1.38--1.49 to 1.07--1.08** across

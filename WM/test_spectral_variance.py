@@ -197,6 +197,91 @@ class SpectralVarianceTests(unittest.TestCase):
         r,s=variance_terms(spectral)
         np.testing.assert_allclose(corrected_variances(r,s,9),[1/9,1/9,0,1/9])
 
+    def test_inverse_recovery_metrics_use_matched_band_and_covariances(self):
+        from check_inverse_recovery import recovery_metrics
+        f=np.array([.1,.2,.3])
+        beta=np.array([0.,np.pi/2])
+        truth=np.array([[1.,2.],[2.,4.],[1.,2.]])
+        cov=np.tile(np.array([[.02,-.005],[-.005,.03]]),(3,1,1))
+        out,saved=recovery_metrics(truth,cov,truth,f,beta,full_hs=5.)
+        self.assertAlmostEqual(out["Hs"],4*np.sqrt(1.2))
+        self.assertAlmostEqual(out["sd_m0"]**2,3*.1**2*.04)
+        for key in ["hs_abs_pct","spectrum_nrmse","directional_nrmse","direction_abs_deg","direction_l1","negative_fraction"]:
+            self.assertAlmostEqual(out[key],0)
+        for key in ["m0_cover95","spectrum_cover95","active_x_cover95","active_direction_cover95"]:
+            self.assertEqual(out[key],1)
+        np.testing.assert_allclose(saved["variance_spectrum"],.04)
+        wrong,_=recovery_metrics(3*truth,cov,truth,f,beta,full_hs=5.)
+        self.assertAlmostEqual(wrong["hs_err_pct"],100*(np.sqrt(3)-1))
+        self.assertEqual(wrong["m0_cover95"],0)
+
+    def test_inverse_truth_rebinning_preserves_wave_energy(self):
+        from check_inverse_recovery import truth_spectrum
+        f=np.arange(10,63)*.005
+        beta=np.linspace(-np.pi,np.pi,36,endpoint=False)
+        fine,hs=truth_spectrum("baseline",f,beta)
+        coarse,coarse_hs=truth_spectrum("baseline",f,beta[::3])
+        np.testing.assert_allclose(coarse.sum(1),fine.sum(1),rtol=1e-14)
+        self.assertAlmostEqual(hs,coarse_hs)
+        self.assertTrue(0<fine.sum()*.005<hs**2/16)
+        self.assertAlmostEqual(np.degrees(np.angle(np.sum(coarse.sum(0)*np.exp(1j*beta[::3])))),90.)
+
+    def test_production_inverse_matches_independent_solver_with_both_weights(self):
+        from check_inverse_recovery import candidate_variances,solver_check
+        rng=np.random.default_rng(176)
+        response=rng.normal(size=(3,12,9))+1j*rng.normal(size=(3,12,9))
+        power=rng.uniform(.1,1,size=(3,12))
+        spectral=np.einsum("fjc,fj,fjk->fck",response,power,response.conj())
+        f=np.array([.1,.2,.3])
+        original=iw.noise_variances
+        for method in ["existing_2.5","coherence_corrected"]:
+            m=2.5 if method=="existing_2.5" else 8.785
+            if method=="coherence_corrected":
+                with patch.object(iw,"noise_variances",candidate_variances):
+                    x,cov,scale=iw.invert(f,spectral,response,5,m)
+            else:
+                x,cov,scale=iw.invert(f,spectral,response,5,m)
+            mean_error,cov_error,_=solver_check(f,spectral,response,5,m,method,x,cov,scale)
+            self.assertLess(mean_error,1e-10)
+            self.assertLess(cov_error,1e-10)
+            self.assertLess(np.linalg.norm(x-power)/np.linalg.norm(power),.02)
+        self.assertIs(iw.noise_variances,original)
+
+    def test_inverse_analysis_preserves_pairing_and_nonzero_coverage_interval(self):
+        import csv
+        import analyse_inverse_recovery as ai
+        rows=[]
+        for headings in [12,36]:
+            for group in ai.GROUPS:
+                for method in ai.METHODS:
+                    for seed in range(8):
+                        values={metric:.5 for metric in ai.METRICS}
+                        values.update(hs_abs_pct=4. if method=="coherence_corrected" else 5.,
+                                      m0_cover68=0,m0_cover95=0,m0=.9+.02*seed,m0_true=1.,sd_m0=.05)
+                        rows.append(dict(headings=headings,group=group,method=method,seed=seed,**values))
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder)
+            source=root/"records.csv"
+            from variance_convergence import write_csv
+            write_csv(source,rows)
+            with patch.object(ai,"plot"),patch.object(ai,"plot_worst"):
+                ai.analyse(source,root,root)
+            with (root/"inverse_recovery_summary.csv").open() as stream:
+                summary=list(csv.DictReader(stream))
+            for r in summary:
+                if r["metric"]=="m0_cover95":
+                    self.assertEqual(float(r["mean"]),0)
+                    self.assertAlmostEqual(float(r["ci95_high"]),1-.025**(1/8))
+            with (root/"inverse_recovery_paired.csv").open() as stream:
+                changes=list(csv.DictReader(stream))
+            for r in changes:
+                if r["metric"]=="hs_abs_pct":
+                    self.assertEqual(float(r["mean_change"]),-1)
+                    self.assertEqual(float(r["ci95_high"]),-1)
+            write_csv(source,rows[:-1])
+            with self.assertRaisesRegex(ValueError,"unpaired"):
+                ai.analyse(source,root,root)
+
     def test_cross_validation_does_not_refit_to_test_errors(self):
         import csv,hashlib,inspect,json
         import check_cross_variance as cv
