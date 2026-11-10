@@ -111,35 +111,233 @@ class Submarine(Sea):
         return da.sel(influenced_dof=self.dofs, radiating_dof=self.dofs).values
 
 
+    
     def solve_hydrodynamics(self):
-        """BEM solve - done ONCE, linear theory assumes small motions about the mean position"""
+        """
+        BEM solve - done once.
+        Linear theory assumes small motions about the mean position.
+        """
+
         solver = cpt.BEMSolver()
-        base = dict(forward_speed=self.forward_speed, water_depth=[np.inf], rho=RHO, g=G)
 
-        # radiation (A, B): beam direction, so encounter freq = omega (k U cos 90° = 0), one solve per omega
-        rad = solver.fill_dataset(xr.Dataset(coords=dict(omega=self.bem_omegas, wave_direction=[np.pi / 2],
-                                                         radiating_dof=self.dofs, **base)), self.body)
+        base = dict(
+            forward_speed=self.forward_speed,
+            water_depth=[np.inf],
+            rho=RHO,
+            g=G
+        )
 
-        # diffraction + Froude-Krylov (excitation): every wave direction, no radiation problems
-        dif = solver.fill_dataset(xr.Dataset(coords=dict(omega=self.bem_omegas, wave_direction=self.theta, **base)), self.body)
+        rad = solver.fill_dataset(
+            xr.Dataset(coords=dict(
+                omega=self.bem_omegas,
+                wave_direction=[np.pi / 2],
+                radiating_dof=self.dofs,
+                **base
+            )),
+            self.body
+        )
+        dif = solver.fill_dataset(
+            xr.Dataset(coords=dict(
+                omega=self.bem_omegas,
+                wave_direction=self.theta,
+                **base
+            )),
+            self.body
+        )
 
-        # A_inf: capytaine only supports omega=inf at zero speed
-        inf = solver.fill_dataset(xr.Dataset(coords=dict(omega=[np.inf], radiating_dof=self.dofs, forward_speed=0.0,
-                                                         water_depth=[np.inf], rho=RHO, g=G)), self.body)
+        inf = solver.fill_dataset(
+            xr.Dataset(coords=dict(
+                omega=[np.inf],
+                radiating_dof=self.dofs,
+                forward_speed=0.0,
+                water_depth=[np.inf],
+                rho=RHO,
+                g=G
+            )),
+            self.body
+        )
 
-        self.A = self.as_matrix(rad.added_mass) # (omega, 6, 6)
-        self.B = self.as_matrix(rad.radiation_damping) # (omega, 6, 6)
-        self.A_inf = self.as_matrix(inf.added_mass.squeeze("omega"))
+        # Shape: (frequency, direction, sensor)
+        self.P_diff = np.zeros(
+            (len(self.bem_omegas), len(self.theta), 6),
+            dtype=complex
+        )
 
-        # Froude-Krylov + diffraction per 1m wave amplitude, (omega, theta, 6)
-        self.F_exc = dif.excitation_force.transpose("omega", "wave_direction", "influenced_dof").sel(influenced_dof=self.dofs).values
+        # Track which coefficients have actually been calculated
+        self.P_diff_valid = np.zeros(
+            (len(self.bem_omegas), len(self.theta)),
+            dtype=bool
+        )
+
+        # Sensor positions relative to submarine centre
+        sensor_positions = np.array([
+            [LENGTH / 2 - 5.0, 0.0, -RADIUS],   # P1
+            [-LENGTH / 2 + 5.0, 0.0, -RADIUS],  # P2
+            [0.0, RADIUS, 0.0],                # P3
+            [0.0, -RADIUS, 0.0],               # P4
+            [0.0, 0.0, RADIUS],                # P5
+            [0.0, 0.0, -RADIUS]                # P6
+        ])
+
+        sensor_points = self.centre + sensor_positions
+
+        sensor_names = ["P1", "P2", "P3", "P4", "P5", "P6"]
+
+        n_freq_test = len(self.bem_omegas)
+        n_dir_test = len(self.theta)
+
+        for i in range(n_freq_test):
+            for j in range(n_dir_test):
+
+                problem = cpt.DiffractionProblem(
+                    body=self.body,
+                    omega=float(self.bem_omegas[i]),
+                    wave_direction=float(self.theta[j]),
+                    water_depth=np.inf,
+                    rho=RHO,
+                    g=G,
+                    forward_speed=self.forward_speed
+                )
+
+                result = solver.solve(
+                    problem,
+                    keep_details=True
+                )
+
+                pressure = solver.compute_pressure(
+                    sensor_points,
+                    result
+                )
+
+                # Store six complex pressure coefficients
+                self.P_diff[i, j, :] = pressure
+                self.P_diff_valid[i, j] = True
+
+        print(
+            "Calculated combinations:",
+            np.count_nonzero(self.P_diff_valid)
+        )
+
+        self.A = self.as_matrix(rad.added_mass)
+
+        self.B = self.as_matrix(rad.radiation_damping)
+
+        self.A_inf = self.as_matrix(
+            inf.added_mass.squeeze("omega")
+        )
+
+        # Excitation force per 1 m wave amplitude
+        self.F_exc = (
+            dif.excitation_force
+            .transpose(
+                "omega",
+                "wave_direction",
+                "influenced_dof"
+            )
+            .sel(influenced_dof=self.dofs)
+            .values
+        )
+
+        self.M_inv = np.linalg.inv(
+            self.M + self.A_inf
+        )
+
+        Z = np.zeros((6, 6))
+        I = np.eye(6)
+
+        self.A_sys = np.block([
+            [Z, I],
+            [-self.M_inv @ self.C_hydro, Z]
+        ])
 
 
-        # constant part of the state space system X' = A_sys X + [0, M_inv F]
-        self.M_inv = np.linalg.inv(self.M + self.A_inf)
-        Z, I = np.zeros((6, 6)), np.eye(6)
-        self.A_sys = np.block([[Z, I], [-self.M_inv @ self.C_hydro, Z]])
 
+    
+    def jonswap_diffraction_pressure(self, t):
+        """
+        Calculate diffraction pressure at all six sensors
+        from the JONSWAP sea state.
+
+        Returns shape (6,).
+        """
+
+        if not np.all(self.P_diff_valid):
+            raise ValueError("Diffraction pressure grid is incomplete")
+
+        if (
+            self.omega.min() < self.bem_omegas.min()
+            or self.omega.max() > self.bem_omegas.max()
+        ):
+            raise ValueError("Sea frequencies extend outside BEM grid")
+
+        # Interpolate BEM coefficients onto sea frequencies
+        if not hasattr(self, "_P_diff_interp"):
+            self._P_diff_interp = np.empty(
+                (len(self.omega), len(self.theta), 6),
+                dtype=complex
+            )
+
+            for j in range(len(self.theta)):
+                for k in range(6):
+                    self._P_diff_interp[:, j, k] = (
+                        np.interp(
+                            self.omega,
+                            self.bem_omegas,
+                            self.P_diff[:, j, k].real
+                        )
+                        + 1j * np.interp(
+                            self.omega,
+                            self.bem_omegas,
+                            self.P_diff[:, j, k].imag
+                        )
+                    )
+
+        phase = self.phi - self.omega[:, None] * t
+
+        contributions = (
+            self.wave_amplitudes[:, :, None]
+            * self._P_diff_interp
+            * np.exp(1j * phase[:, :, None])
+        )
+
+        return np.real(contributions.sum(axis=(0, 1)))
+
+
+    def diffraction_pressure_time(self, t, freq_idx=0, dir_idx=0):
+        """
+        Reconstruct diffraction pressure from one wave component.
+
+        Returns an array of shape (len(t), 6), one column
+        for each pressure sensor P1-P6.
+        """
+
+        if not self.P_diff_valid[freq_idx, dir_idx]:
+            raise ValueError(
+                "Diffraction coefficient has not been calculated"
+            )
+
+        t = np.asarray(t)
+
+        # Complex pressure coefficient for six sensors
+        P_hat = self.P_diff[freq_idx, dir_idx, :]
+
+        # Unit-amplitude test wave (1 metre)
+        amplitude = 1.0
+
+        # Zero initial phase for this test
+        phase = 0.0
+
+        # Angular frequency corresponding to this BEM result
+        omega = self.bem_omegas[freq_idx]
+
+        # Reconstruct pressure at every time
+        pressure = np.real(
+            amplitude
+            * P_hat[None, :]
+            * np.exp(1j * (phase - omega * t[:, None]))
+        )
+
+        return pressure
 
     def calculate_diffraction_pressure(self, omega, wave_direction):
         """
@@ -185,6 +383,53 @@ class Submarine(Sea):
 
         return dict(zip(names, pressures))
 
+
+    def calculate_radiation_pressure(self, omega, radiating_dof="Heave"):
+        """
+        Calculate complex radiation pressure at P1-P6
+        for one prescribed radiating degree of freedom.
+
+        This is a radiation response for Capytaine's
+        unit oscillatory velocity convention, not yet
+        the pressure produced by the simulated motion.
+        """
+
+        x_end = LENGTH / 2 - 5.0
+
+        sensor_positions = {
+            "P1": [x_end, 0.0, -self.depth - RADIUS],
+            "P2": [-x_end, 0.0, -self.depth - RADIUS],
+            "P3": [0.0, RADIUS, -self.depth],
+            "P4": [0.0, -RADIUS, -self.depth],
+            "P5": [0.0, 0.0, -self.depth + RADIUS],
+            "P6": [0.0, 0.0, -self.depth - RADIUS],
+        }
+
+        if radiating_dof not in self.body.dofs:
+            raise ValueError(f"Unknown DOF: {radiating_dof}")
+
+        names = list(sensor_positions)
+        points = np.asarray(list(sensor_positions.values()))
+
+        solver = cpt.BEMSolver()
+
+        problem = cpt.RadiationProblem(
+            body=self.body,
+            omega=omega,
+            radiating_dof=radiating_dof,
+            water_depth=np.inf,
+            rho=RHO,
+            g=G,
+            forward_speed=0.0
+        )
+
+        result = solver.solve(problem, keep_details=True)
+
+        pressures = np.asarray(
+            solver.compute_pressure(points, result)
+        ).reshape(-1)
+
+        return dict(zip(names, pressures))
 
     def build_excitation(self):
         """Combine the BEM excitation with the Sea's wave amplitudes and phases

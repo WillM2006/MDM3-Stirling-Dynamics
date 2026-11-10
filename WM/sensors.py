@@ -202,27 +202,67 @@ def incident_pressure(sub, wave_amps, x_sensor, y_sensor, z_mean, t, chunk=1000)
     return RHO * G * ramp(t) * pressure
 
 
-def pressure_sensor(sub, wave_amps, t, X6, r):
+
+def pressure_sensor(sub,wave_amps,t,X6,r,diffraction=None,radiation=None):
     """
-    Pressure at a sensor, only froude-kylov (linear pressure) no radiation or diffraction.
-    Delta p = -rho g dz_P  +  p_I(mean_pos, t)
-    first term: sensor moving up/down in the static pressure gradient
-    second term: incident wave pressure at the sensor
-    If the sensor moved exactly with the water these two cancel
+    Pressure at a hull sensor.
+
+    Includes:
+    - Hydrostatic pressure change due to sensor motion
+    - Incident-wave pressure
+    - Optional diffraction pressure
+    - Optional radiation pressure
+
+    Diffraction and radiation must be calculated separately
+    before calling this function.
     """
+
     dx, dy, dz = sensor_displacement(X6, r)
-    # mean_pos = O_EARTH + r                                    # mean position of the sensor in earth dimensions
+
     mean_pos = sub.centre + [0, 0, -0.2] + r
 
-
     hydro = -RHO * G * dz
-    incident = incident_pressure(sub, wave_amps, np.full(len(t), mean_pos[0]), np.full(len(t), mean_pos[1]), mean_pos[2], t) # mean position, displacement is 2nd order
-    total = hydro + incident
 
-    return dict(total=total, hydro=hydro, incident=incident, dz=dz, mean_depth=-mean_pos[2])
+    incident = incident_pressure(
+        sub,
+        wave_amps,
+        np.full(len(t), mean_pos[0]),
+        np.full(len(t), mean_pos[1]),
+        mean_pos[2],
+        t
+    )
+
+    # Default to the original pressure model
+    if diffraction is None:
+        diffraction = np.zeros_like(incident)
+
+    if radiation is None:
+        radiation = np.zeros_like(incident)
+
+    diffraction = np.asarray(diffraction)
+    radiation = np.asarray(radiation)
+
+    if diffraction.shape != incident.shape:
+        raise ValueError("Diffraction pressure must match time array shape")
+
+    if radiation.shape != incident.shape:
+        raise ValueError("Radiation pressure must match time array shape")
+
+    total = hydro + incident + diffraction + radiation
+
+    return dict(
+        total=total,
+        hydro=hydro,
+        incident=incident,
+        diffraction=diffraction,
+        radiation=radiation,
+        dz=dz,
+        mean_depth=-mean_pos[2]
+    )
 
 
-def true_signals(sub, wave_amps, t, X_hist):
+
+def true_signals(sub, wave_amps, t, X_hist, diffraction=None):
     """
     Everything each sensor would read if it were perfect (i.e. no noise or bias), on the model's time grid.
     """
@@ -260,7 +300,32 @@ def true_signals(sub, wave_amps, t, X_hist):
     signals["roll"], signals["pitch"] = roll, pitch
 
     #  the six hull pressure sensors 
-    signals["pressure"] = {name: pressure_sensor(sub, wave_amps, t, pose, r) for name, r in PRESSURE_SENSORS.items()}
+    
+    # The six hull pressure sensors
+    signals["pressure"] = {}
+
+    if diffraction is not None:
+        if diffraction.shape != (len(t), 6):
+            raise ValueError("Diffraction must have shape (len(t), 6)")
+
+    for i, (name, r) in enumerate(PRESSURE_SENSORS.items()):
+
+        # Diffraction pressure for this sensor
+        p_diff = (
+            diffraction[:, i]
+            if diffraction is not None
+            else None
+        )
+
+        signals["pressure"][name] = pressure_sensor(
+            sub,
+            wave_amps,
+            t,
+            pose,
+            r,
+            diffraction=p_diff
+        )
+
 
     # depth gauge = one more pressure port, depth = (p - p_atm) / (rho g)
     depth_gauge = pressure_sensor(sub, wave_amps, t, pose, R_DEPTH)
@@ -386,6 +451,15 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
     #  1. Simulation (submarine.py + the controller)
     sub = ControlledSubmarine(**sub_kwargs)
     sub.solve_hydrodynamics()
+    print("BEM frequency range:", sub.bem_omegas.min(), sub.bem_omegas.max())
+
+    print("Available wave attributes:")
+    print([
+        name for name in vars(sub)
+        if any(word in name.lower() for word in
+           [    "omega", "freq", "phase", "phi", "wave", "theta"])
+    ])
+
     sub.build_excitation()
     sub.build_kernel()
     sub.build_viscous_damping()
@@ -408,8 +482,30 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
         _, X_free = sub.simulate(duration=t_sim)
         print("simulation (controller OFF) done")
 
+    print("Generating diffraction pressure signals...")
+    print("Sea frequency range:", sub.omega.min(), sub.omega.max())
+    print("Wave amplitude shape:", sub.wave_amplitudes.shape)
+    print("Wave phase shape:", sub.phi.shape)
+
+    diffraction = np.array([
+        sub.jonswap_diffraction_pressure(ti)
+        for ti in t
+    ])
+
+    print("Diffraction array shape:", diffraction.shape)
+    print("P1 diffraction range:",
+    diffraction[:, 0].min(),
+    diffraction[:, 0].max())
+
+
     #  2 - 4. True signals -> sensor readings
-    true = true_signals(sub, wave_amps, t, X_hist)
+    true = true_signals(
+    sub,
+    wave_amps,
+    t,
+    X_hist,
+    diffraction=diffraction
+    )
     meas = measure_all(t, true)
 
     # save the synthetic data set for the estimator (fluctuations about the mean, SI units)
