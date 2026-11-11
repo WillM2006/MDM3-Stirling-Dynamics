@@ -1,5 +1,9 @@
 # What the variance evidence supports
 
+Follow-up: [the frozen known-processing comparison](processed_prediction.md)
+tests a reusable observation operator on 600 fresh native recordings, with
+nonlinear drag retained and all parameters untuned.
+
 **The scalar M now has a defensible sensor-level calibration for the tested
 6400-component generator. The current inverse uncertainty does not.** These
 are different conclusions: a variance estimate can describe fluctuations
