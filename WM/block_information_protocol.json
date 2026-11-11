@@ -1,0 +1,49 @@
+{
+  "groups": {
+    "baseline": 250000,
+    "long_period": 251000,
+    "weak_waves": 252000
+  },
+  "records_per_group": 200,
+  "schemes": {
+    "halves": [
+      [
+        0,
+        900
+      ],
+      [
+        900,
+        1800
+      ]
+    ],
+    "gap100": [
+      [
+        0,
+        800
+      ],
+      [
+        1000,
+        1800
+      ]
+    ]
+  },
+  "full_samples": 1800,
+  "sample_rate": 2.0,
+  "segment_seconds": 200.0,
+  "counts": {
+    "full": 8,
+    "halves": 3,
+    "gap100": 3
+  },
+  "setup": "regenerate the same 250xxx seeded native 1200-second simulations; discard 300 seconds using unchanged preprocessing; verify whole-record spectral parity before using blocks",
+  "reference": "230xxx and 240xxx independent spectra select each channel peak frequency; no wave truth or inverse fit",
+  "independence": "whole-record paired bootstrap of cross-block correlations for nine auto-spectral peaks and nine integrated auto-spectral band powers; report pointwise 95% intervals; practical correlation band +/-0.2, not proof of independence",
+  "precision": "empirical effective averages mean(auto)^2 / var(auto), and coefficient of variation of auto^2 as a variance-weight proxy; both blocks shown separately, not pooled as independent records",
+  "decision": "do not run recovery in this study; assess whether split blocks provide approximately independent AND stable per-frequency variance estimates; no tuning M or selecting a split from recovery",
+  "limitations": "stationary simulator, previously used seeds, conditional bootstrap; no field-data stationarity validation; dependence across nonlinear spectral features not exhausted by correlation probes",
+  "M": "production/research M=8.785 remains unchanged; diagnostic effective-averages values are not replacement M values",
+  "source_sha256": "7e780e92fada9c43258c60a8211c536fdf44e02d9042fbf0c4515417f2413cc2",
+  "generator_fingerprint": "4c5522ddade4dfc0ccd4a172ca28d17474327c77e55583f9e731b7fdb6543542",
+  "hydrodynamics_sha256": "fd304e95d509553ae7ae821c23ad6ade7ac3f483ccb4e78526eb567384ffd92c",
+  "parent_fingerprint": "4c5522ddade4dfc0ccd4a172ca28d17474327c77e55583f9e731b7fdb6543542"
+}

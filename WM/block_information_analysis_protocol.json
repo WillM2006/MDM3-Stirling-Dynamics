@@ -1,0 +1,9 @@
+{
+  "source_sha256": "63ceb0ec63d17ff53d4e6f84be90c1ee336fb570eca55431dcc55fd8ee64f88a",
+  "generation_protocol_sha256": "c890bc6489192fe30dfdaf90a00317ad35adcbe4c5189ef61a6bf46e12080fae",
+  "probes": "each channel auto power at its peak frequency chosen from 400 independent reference spectra; each channel integrated auto power over all retained frequencies; 18 probes per scheme and condition",
+  "precision": "effective averages and coefficient of variation of auto power and auto power squared, separately for full record and each block; squared auto is a variance-weight proxy, not calibrated block covariance",
+  "dependence": "Pearson correlation between matched block probes; 95% interval inside +/-0.2 is practical weak-linear-dependence evidence for that probe only",
+  "resampling": "1000 whole-record bootstrap draws, keeping both blocks paired; conditional on independently selected peak frequencies; pointwise, not simultaneous intervals",
+  "scope": "no inverse, wave truth, M fitting or criterion based on recovery; few-segment instability considered alongside dependence; no universal numerical viability threshold asserted"
+}
