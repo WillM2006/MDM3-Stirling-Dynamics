@@ -1,0 +1,50 @@
+{
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "primary_headings": 12,
+  "sensitivity_headings": 36,
+  "records_per_group": 200,
+  "groups": {
+    "baseline": 250000,
+    "long_period": 251000,
+    "weak_waves": 252000
+  },
+  "calibration": {
+    "baseline": [
+      "train_baseline",
+      207000
+    ],
+    "long_period": [
+      "test_long_period",
+      209000
+    ],
+    "weak_waves": [
+      "test_weak_waves",
+      210000
+    ]
+  },
+  "primary_gain_reference": "baseline",
+  "bootstrap": 1000,
+  "study": "retrospective reuse of 600 previously examined test records; no fresh validation",
+  "reference": "three independent calibration means define three frozen gains; every gain and covariance pool tested on every condition; no best-pool selection",
+  "invariant": "saved self_diagonal estimates are read, never recomputed, refitted or bias-corrected; M, tau and response convention unchanged",
+  "primary": "predicted band-energy variance / observed variance of the actual saved point estimator; fixed-gain surrogate ratio reported separately",
+  "inference": "whole-record paired bootstrap conditional on frozen gains, M and fitted structured pools; empirical reference additionally resamples calibration projections with gains fixed",
+  "interpretation": "95% interval within 0.9--1.1 establishes the existing practical variance criterion; inclusion of one alone is inconclusive; pointwise intervals are not simultaneous",
+  "coverage": "uncentred Gaussian energy intervals attached to unchanged estimates; exact binomial intervals conditional on pools; Hs bounds are monotone transforms, not Gaussian Hs claims",
+  "source_hashes": {
+    "check_fixed_estimator_scatter.py": "b1f2ae067d8184c0a2abf0636bb43aeb8cc6efcb1c7b88325dee20030749c510",
+    "correlated_spectral.py": "73d4d7e33b72d2bcd6191d4b059e3e6ab4d92ef60928cbe6428ab8cebd7deae3",
+    "pooled_spectral.py": "40f65cbdb62f4000dcc29c929912a867b4f2e103d31c3e8d8ec7ba198f7199b0",
+    "invert_waves.py": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+    "batch_invert.py": "3013070c16fe03d23de4d5dbba8c33769a32e53acfec72e95f3c9f409eb502b9",
+    "check_cross_variance.py": "99ef149ba4a63990fcfce59bf8fdacba2c2e5c4bef3a9ce08076a04b2c1a57f4",
+    "check_inverse_recovery.py": "ce4051c88f869f1c627f217b1a670eeeb402beb2d61059877ce2d4858fc26ab0"
+  },
+  "saved_scores_sha256": "b5bc4d0416cf37006a75448ce6a5addaf9e006527e4e18873b27e8946aad7c02",
+  "pool_hashes": {
+    "pool-baseline.npz": "7f4dc403e8834c6b4770294f205faeddb39a8fd7d6d23be5a7341b5ae5da4ddf",
+    "pool-long_period.npz": "8ce78093397cf041991e500b432863cd8f2dbca4681e931ee34a55b4ba33c23f",
+    "pool-weak_waves.npz": "3d2c9f051499f37d8d5e60e4ee084bb56d93adb2dd4d1cf83fe2471d5f82c4c9"
+  }
+}
