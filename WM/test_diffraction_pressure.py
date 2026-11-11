@@ -6,9 +6,6 @@ from capytaine.bem.airy_waves import airy_waves_pressure
 
 from submarine import Submarine, RHO, G, LENGTH, RADIUS
 
-# =====================================================
-# 1. Define test wave and submarine
-# =====================================================
 
 OMEGA = 1.0
 WAVE_DIRECTION = 0.0
@@ -26,10 +23,6 @@ sensor_positions = {
     "P6": np.array([0.0, 0.0, -sub.depth - RADIUS]),
 }
 
-
-# =====================================================
-# 2. Solve diffraction problem using Capytaine
-# =====================================================
 
 solver = cpt.BEMSolver()
 
@@ -75,9 +68,6 @@ p_diff = np.asarray(
     solver.compute_pressure(p1, result)
 ).item()
 
-# =====================================================
-# 3. Calculate incident-wave pressure
-# =====================================================
 
 # Deep-water dispersion relation
 k = OMEGA**2 / G
@@ -105,9 +95,6 @@ print("Difference:", abs(p_inc - p_inc_capytaine))
 # Combined pressure (incident + diffraction)
 p_total = p_inc + p_diff
 
-# =====================================================
-# 4. Print numerical results
-# =====================================================
 
 print("\nPressure at sensor P1")
 print("---------------------")
@@ -123,9 +110,6 @@ print("Phase:", np.angle(p_diff, deg=True), "degrees")
 print("\nCombined pressure:")
 print("Amplitude:", abs(p_total), "Pa")
 
-# =====================================================
-# 5. Reconstruct time-domain pressure
-# =====================================================
 
 t = np.linspace(0, 20, 1000)
 
@@ -133,9 +117,6 @@ p_inc_t = np.real(p_inc * np.exp(-1j * OMEGA * t))
 p_diff_t = np.real(p_diff * np.exp(-1j * OMEGA * t))
 p_total_t = np.real(p_total * np.exp(-1j * OMEGA * t))
 
-# =====================================================
-# 6. Plot pressure contributions
-# =====================================================
 
 plt.figure(figsize=(10, 5))
 

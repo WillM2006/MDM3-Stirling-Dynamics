@@ -26,7 +26,7 @@ P_ATM = 101325.0                  # atmospheric pressure in Pascals
 # sensor positions are given by r = (r_x, r_y, r_z) measured from O (centre of rotation)
 # centre = (0, 0, -DEPTH), rotation_center = centre - (0, 0, 0.2) 
 O_EARTH = np.array([0.0, 0.0, -DEPTH - 0.2])   # defining O on earth scale
-Z_AXIS = 0.2                                    # hull axis/ z axis is 0.2 m above O ( in earth frame )
+Z_AXIS = 0.0                                    # hull axis/ z axis is 0.2 m above O ( in earth frame )
 
 #defining imu position
 R_IMU = np.array([5.0, 0.0, Z_AXIS]) # z component means lies on hull axis
@@ -219,7 +219,7 @@ def pressure_sensor(sub,wave_amps,t,X6,r,diffraction=None,radiation=None):
 
     dx, dy, dz = sensor_displacement(X6, r)
 
-    mean_pos = sub.centre + [0, 0, -0.2] + r
+    mean_pos = sub.centre + r
 
     hydro = -RHO * G * dz
 
@@ -262,7 +262,7 @@ def pressure_sensor(sub,wave_amps,t,X6,r,diffraction=None,radiation=None):
 
 
 
-def true_signals(sub, wave_amps, t, X_hist, diffraction=None):
+def true_signals(sub, wave_amps, t, X_hist, diffraction=None, radiation=None):
     """
     Everything each sensor would read if it were perfect (i.e. no noise or bias), on the model's time grid.
     """
@@ -299,21 +299,28 @@ def true_signals(sub, wave_amps, t, X_hist, diffraction=None):
     # true attitude (AHRS output = this + its own errors, added later)
     signals["roll"], signals["pitch"] = roll, pitch
 
-    #  the six hull pressure sensors 
-    
     # The six hull pressure sensors
     signals["pressure"] = {}
 
-    if diffraction is not None:
-        if diffraction.shape != (len(t), 6):
-            raise ValueError("Diffraction must have shape (len(t), 6)")
+    if diffraction is not None and diffraction.shape != (len(t), 6):
+        raise ValueError("Diffraction must have shape (len(t), 6)")
+
+    if radiation is not None and radiation.shape != (len(t), 6):
+        raise ValueError("Radiation must have shape (len(t), 6)")
 
     for i, (name, r) in enumerate(PRESSURE_SENSORS.items()):
 
-        # Diffraction pressure for this sensor
+        # Diffraction pressure at this sensor
         p_diff = (
             diffraction[:, i]
             if diffraction is not None
+            else None
+        )
+
+        # Radiation pressure at this sensor
+        p_rad = (
+            radiation[:, i]
+            if radiation is not None
             else None
         )
 
@@ -323,8 +330,10 @@ def true_signals(sub, wave_amps, t, X_hist, diffraction=None):
             t,
             pose,
             r,
-            diffraction=p_diff
+            diffraction=p_diff,
+            radiation=p_rad
         )
+
 
 
     # depth gauge = one more pressure port, depth = (p - p_atm) / (rho g)
@@ -492,11 +501,25 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
         for ti in t
     ])
 
+    diffraction *= ramp(t)[:, None]
+
     print("Diffraction array shape:", diffraction.shape)
     print("P1 diffraction range:",
     diffraction[:, 0].min(),
     diffraction[:, 0].max())
 
+
+    # Generate radiation pressure from submarine motion
+    print("Generating radiation pressure signals...")
+
+    radiation = sub.radiation_pressure_time(t, X_hist)
+
+    print("Radiation array shape:", radiation.shape)
+    print(
+        "P1 radiation range:",
+        radiation[:, 0].min(),
+        radiation[:, 0].max()
+    )
 
     #  2 - 4. True signals -> sensor readings
     true = true_signals(
@@ -504,7 +527,8 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
     wave_amps,
     t,
     X_hist,
-    diffraction=diffraction
+    diffraction=diffraction,
+    radiation=radiation
     )
     meas = measure_all(t, true)
 

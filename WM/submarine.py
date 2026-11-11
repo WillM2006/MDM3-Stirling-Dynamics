@@ -69,6 +69,7 @@ class Submarine(Sea):
             mass=self.mass
         )
         self.dofs = list(self.body.dofs) # Surge, Sway, Heave, Roll, Pitch, Yaw
+    
 
         # 6x6 numpy matrices, rows = influenced_dof, cols = radiating_dof
         self.C_hydro = self.as_matrix(self.body.compute_hydrostatic_stiffness(rho=RHO, g=G))
@@ -218,6 +219,43 @@ class Submarine(Sea):
             np.count_nonzero(self.P_diff_valid)
         )
 
+
+        # Shape: (frequency, radiating DOF, sensor)
+        self.P_rad = np.zeros(
+            (len(self.bem_omegas), len(self.dofs), 6),
+            dtype=complex
+        )
+
+        for i, omega in enumerate(self.bem_omegas):
+            for j, dof in enumerate(self.dofs):
+
+                problem = cpt.RadiationProblem(
+                    body=self.body,
+                    omega=float(omega),
+                    radiating_dof=dof,
+                    water_depth=np.inf,
+                    rho=RHO,
+                    g=G,
+                    forward_speed=self.forward_speed
+                )
+
+                result = solver.solve(
+                    problem,
+                    keep_details=True
+                )
+
+                pressure = solver.compute_pressure(
+                    sensor_points,
+                    result
+                )
+
+                self.P_rad[i, j, :] = pressure
+
+        print(
+            "Radiation pressure coefficients:",
+            self.P_rad.shape)
+
+
         self.A = self.as_matrix(rad.added_mass)
 
         self.B = self.as_matrix(rad.radiation_damping)
@@ -250,6 +288,82 @@ class Submarine(Sea):
             [-self.M_inv @ self.C_hydro, Z]
         ])
 
+
+    def radiation_pressure_time(self, t, X_hist):
+        """
+        Reconstruct radiation pressure from six-DOF velocity history.
+
+        Returns an array of shape (len(t), 6).
+        """
+
+        t = np.asarray(t)
+        velocity = np.asarray(X_hist)[:, 6:12]
+
+        if velocity.shape != (len(t), 6):
+            raise ValueError("Expected six velocity channels")
+
+        dt = np.mean(np.diff(t))
+
+        if not np.allclose(np.diff(t), dt):
+            raise ValueError("Time samples must be uniformly spaced")
+
+        # Remove the mean velocity from each channel
+        velocity_fluct = velocity - velocity.mean(axis=0)
+
+        # Fourier transform of all six velocity channels
+        V = np.fft.rfft(velocity_fluct, axis=0)
+
+        # Frequencies corresponding to the FFT
+        fft_omega = 2 * np.pi * np.fft.rfftfreq(len(t), dt)
+
+        # Interpolate radiation transfer functions onto FFT frequencies
+        H = np.zeros(
+            (len(fft_omega), 6, 6),
+            dtype=complex
+        )
+
+        valid = (
+            (fft_omega >= self.bem_omegas.min())
+            & (fft_omega <= self.bem_omegas.max())
+        )
+
+        for dof in range(6):
+            for sensor in range(6):
+                coeff = self.P_rad[:, dof, sensor]
+
+                H[valid, dof, sensor] = (
+                    np.interp(
+                        fft_omega[valid],
+                        self.bem_omegas,
+                        coeff.real
+                    )
+                    + 1j * np.interp(
+                        fft_omega[valid],
+                        self.bem_omegas,
+                        coeff.imag
+                    )
+                )
+
+        # Convert Capytaine's negative-frequency time convention
+        # to NumPy's positive-frequency FFT convention
+        # Convert displacement-normalized pressure to velocity-normalized pressure
+        H_velocity = np.zeros_like(H)
+
+        H_velocity[valid] = (
+            H[valid] / (-1j * fft_omega[valid, None, None])
+        )
+
+        # Convert Capytaine's convention to NumPy's FFT convention
+        P_fft = np.einsum("fd,fds->fs", V, np.conj(H_velocity))
+
+        # Return to time domain
+        pressure = np.fft.irfft(
+            P_fft,
+            n=len(t),
+            axis=0
+        )
+
+        return pressure
 
 
     
