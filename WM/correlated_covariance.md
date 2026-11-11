@@ -1,5 +1,9 @@
 # Correlated covariance with M and the prior frozen
 
+Follow-up: [independent pooled sensor covariance](pooled_covariance.md) tests
+separate calibration pools, all-pairs transfer and a post-validation
+mean-response decomposition. Pooling does not validate an inverse fix.
+
 **Finding: this first correlated plug-in covariance is not ready to merge.**
 It improves important sensor-level covariance predictions and directional
 shape, but introduces substantial downward wave-height bias. With M and tau

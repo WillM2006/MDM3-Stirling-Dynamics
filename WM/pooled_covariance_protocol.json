@@ -1,0 +1,58 @@
+{
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "groups": {
+    "baseline": {
+      "seed_start": 250000,
+      "records": 200
+    },
+    "long_period": {
+      "seed_start": 251000,
+      "records": 200
+    },
+    "weak_waves": {
+      "seed_start": 252000,
+      "records": 200
+    }
+  },
+  "headings": [
+    12,
+    36
+  ],
+  "calibration": {
+    "baseline": {
+      "folder": "train_baseline",
+      "seed_start": 207000,
+      "records": 200
+    },
+    "long_period": {
+      "folder": "test_long_period",
+      "seed_start": 209000,
+      "records": 200
+    },
+    "weak_waves": {
+      "folder": "test_weak_waves",
+      "seed_start": 210000,
+      "records": 200
+    }
+  },
+  "methods": [
+    "self_diagonal",
+    "pool_diagonal",
+    "pool_joint"
+  ],
+  "pool_sha256": "40f65cbdb62f4000dcc29c929912a867b4f2e103d31c3e8d8ec7ba198f7199b0",
+  "joint_sha256": "73d4d7e33b72d2bcd6191d4b059e3e6ab4d92ef60928cbe6428ab8cebd7deae3",
+  "generator_fingerprint": "4c5522ddade4dfc0ccd4a172ca28d17474327c77e55583f9e731b7fdb6543542",
+  "native_sha256": "09fdfab8b37cfa4c1d9ec60e00febff8979dfbe0cb953ce865ca9e9250a74c9d",
+  "inverse_sha256": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+  "covariance": "mean fixed-M corrected record variances; empirical per-frequency correlation shrunk by estimated squared-error risk; joint Hann frequency kernel",
+  "separation": "every pool is frozen before test generation; every pool applied to every test sea; no true-condition selector, no current-record covariance adaptation",
+  "interpretation": "same-condition entries are stationary-calibration controls; off-condition entries are transfer stress tests, not an oracle selection rule",
+  "calibration_noise": "200 records learn the covariance of a NEW 900-second record; no division by pool size; empirical correlations and stabilisation use sensor records only",
+  "prior": "tau and recipient-record prior scales identical across all methods",
+  "validation": "20 fixed sensor-only projection variances; matched and all-pairs transfer recovery; exact binomial coverage and 1000 paired record bootstrap draws",
+  "limitations": "200 stationary calibration records are an idealised pool; intervals conditional on each fixed pool; existing shared simulator physics remains; no production adoption",
+  "solver": "prior-aware block-SVD preconditioned Gaussian solve; float-precision numerical-rank cutoff only",
+  "failures": "nonpositive total energy is a failed recovery: Hs clipped to zero as in production, 100 percent height error, undefined direction marked missing; failures never discarded"
+}

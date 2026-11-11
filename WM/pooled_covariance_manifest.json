@@ -1,0 +1,40 @@
+{
+  "pools": {
+    "pool-baseline.npz": "7f4dc403e8834c6b4770294f205faeddb39a8fd7d6d23be5a7341b5ae5da4ddf",
+    "pool-long_period.npz": "8ce78093397cf041991e500b432863cd8f2dbca4681e931ee34a55b4ba33c23f",
+    "pool-weak_waves.npz": "3d2c9f051499f37d8d5e60e4ee084bb56d93adb2dd4d1cf83fe2471d5f82c4c9"
+  },
+  "source": {
+    "pooled_spectral.py": "40f65cbdb62f4000dcc29c929912a867b4f2e103d31c3e8d8ec7ba198f7199b0",
+    "check_pooled_covariance.py": "1dc802b6ba93eb4cd1e7afab4924fbe343f774152a3b37ab497b948d8dac9ec2",
+    "analyse_pooled_covariance.py": "17e20cadf3d11f981543d9fa4bc97e0cb914581a5da554b8e6b1158085d3f118",
+    "test_pooled_spectral.py": "1f9708a1ad3e374b7a2e4a2fe189ef4dabd527375604edf8c2991d3c40cfebbd"
+  },
+  "stage": "calibration matrices and statistical rules frozen before fresh outcomes",
+  "calibration_records": 200,
+  "target_noise": "new native-duration recording; no division by calibration size",
+  "test_records": 600,
+  "test_records_sha256": "d87705bcc099fe1419eeb779e5278f87e7a48b5273142fed1317e23939c04571",
+  "numerical_amendment": "pooled_covariance_numerical_amendment.json",
+  "failure_handling": "failed transfers retained; covariance and prior unchanged",
+  "final_source": {
+    "pooled_spectral.py": "40f65cbdb62f4000dcc29c929912a867b4f2e103d31c3e8d8ec7ba198f7199b0",
+    "check_pooled_covariance.py": "1dc802b6ba93eb4cd1e7afab4924fbe343f774152a3b37ab497b948d8dac9ec2",
+    "analyse_pooled_covariance.py": "ff7369b93fcbf4a0071d344a362b9338c40d294e24b18ec594d742ab400aa039",
+    "test_pooled_spectral.py": "1f9708a1ad3e374b7a2e4a2fe189ef4dabd527375604edf8c2991d3c40cfebbd",
+    "diagnose_pooled_mean.py": "932f337d63c5e105a10fe5938830dc2108ef11c98c34b0494dc6edef81a55033"
+  },
+  "analysis_presentation_amendment": "Colorbar axes repositioned after analysis; statistical calculations unchanged; original source hashes retained above.",
+  "mean_diagnostic_scope": "Post-validation algebraic decomposition only; true spectrum used to diagnose bias, never to fit covariance, M, A, prior, or choose a recovery method.",
+  "verification": {
+    "tests_passed": 36,
+    "unique_scores": 8400,
+    "groups": 42,
+    "records_per_group": 200,
+    "nonpositive_energy_failures_retained": 3,
+    "max_scaled_solver_residual": 5.712011555623514e-17,
+    "calibration_test_seeds_disjoint": true,
+    "unchanged_production_files": 5,
+    "unchanged_report_hashes": 18
+  }
+}
