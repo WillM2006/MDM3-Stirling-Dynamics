@@ -1,0 +1,24 @@
+{
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "headings": [
+    12,
+    36
+  ],
+  "groups": {
+    "baseline": 270000,
+    "long_period": 271000,
+    "weak_waves": 272000
+  },
+  "methods": [
+    "uncorrected_response",
+    "filter_alignment_response"
+  ],
+  "change": "multiply responses by known FIR/common-grid interpolation gain; no Welch-cell inverse or sensor-noise subtraction",
+  "invariant": "same corrected diagonal variance formula, data and original recipient-record prior scales; no M/tau/physical-parameter fitting",
+  "status": "exploratory recovery follow-up using the 600 records already examined for forward prediction; not an untouched final recovery test",
+  "selection": "filter/alignment candidate was predefined before forward validation, selected for this follow-up after those mean results; no recovery outcomes used to tune it",
+  "primary": "paired mean absolute band-Hs error change, with direction/spectrum/negative-power and coverage checks",
+  "source_sha256": "28eedc5fc759ea5654c02152341c54d5a845accb23445d5bc62f6341c61ddb9f",
+  "data_protocol_sha256": "76494f66811993f1f245e89b4f3c18b9faabd05c1d1a50c263f15eb959366a87"
+}
