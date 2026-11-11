@@ -1,5 +1,9 @@
 # Independent pooled sensor covariance
 
+Follow-up: [mean-spectrum audit and assessment of defensible variance
+parameters](spectral_mean_audit.md) identifies specific observation/dynamics
+mismatches while retaining the sensor-only M calibration.
+
 **Finding: independent pooling is not an adequate inverse fix.** Pooled
 diagonal weighting slightly reduces some height biases, but pooled joint
 covariance gives large downward height errors and poor coverage even with
