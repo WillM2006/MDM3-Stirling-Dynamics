@@ -1,0 +1,83 @@
+{
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "primary": "12 headings, baseline correlation pool and reference gain; 36-heading sensitivity",
+  "reference": "400 earlier saved corrected-diagonal outputs per condition: 230xxx and 240xxx cohorts; disjoint from 250xxx target cohort and 207xxx/209xxx/210xxx correlation pools",
+  "evaluation": "200 existing 250xxx outputs per condition; retrospective, not untouched final validation",
+  "scenarios": [
+    [
+      0,
+      0,
+      "paired"
+    ],
+    [
+      0,
+      0,
+      "independent"
+    ],
+    [
+      0,
+      0,
+      "constant"
+    ],
+    [
+      0,
+      1,
+      "paired"
+    ],
+    [
+      0,
+      1,
+      "independent"
+    ],
+    [
+      0,
+      1,
+      "constant"
+    ],
+    [
+      1,
+      0,
+      "paired"
+    ],
+    [
+      1,
+      0,
+      "independent"
+    ],
+    [
+      1,
+      0,
+      "constant"
+    ],
+    [
+      1,
+      1,
+      "paired"
+    ],
+    [
+      1,
+      1,
+      "independent"
+    ],
+    [
+      1,
+      1,
+      "constant"
+    ]
+  ],
+  "reference_parameters": "diagnostic bias and variance-ratio estimates from independent reference outputs; truth is used only for diagnosis, never to create a deployable correction",
+  "invariant": "original saved estimates, covariance rules, M, prior, generator and report remain unchanged; no inverse solve",
+  "dependence": "expected coverage over all n*(n-1) distinct error/variance donor pairings, not 39800 independent observations",
+  "constant_width": "preserve mean target predicted variance while removing width fluctuations; ensemble diagnostic, not an available per-record estimator",
+  "shape": "additional within-test centring/scaling diagnostic isolates marginal tail shape; not a fitted interval method or coverage validation",
+  "inference": "1000 independent reference/test whole-record bootstrap draws, recomputing diagnostic parameters, donor means and moments; conditional on existing correlation pool and gains; pointwise intervals",
+  "interpretation": "factorial conditional contrasts, not additive causal allocations; no coverage or variance multiplier chosen to pass a test",
+  "source_sha256": "199a95e5f5970d3912ff708f6f56962625d02b28edca6ed7b0e262684b515488",
+  "score_hashes": {
+    "inverse_recovery_records.csv": "5443a2a8e72757e443284b1f69b0cdc5cdf88539199b9b3577792f4e9c19a8a7",
+    "correlated_covariance_records.csv": "1f2f3539ceafbef7bad4699c5db9fcff1dbcbe9fdff8921f4d2236ad1797917b",
+    "pooled_covariance_records.csv": "b5bc4d0416cf37006a75448ce6a5addaf9e006527e4e18873b27e8946aad7c02"
+  },
+  "parent_sha256": "392aea332fd2c30228f2f9a4b3472af8fd578435246487e13947be2570402aaf"
+}
