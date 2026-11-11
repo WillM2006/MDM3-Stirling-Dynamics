@@ -1,0 +1,69 @@
+{
+  "base_main": "caaaf415dbe7bd372187758fe542c69999913d3e",
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "diagnostic_only": true,
+  "refitting": false,
+  "existing_records": 600,
+  "noise_only_seeds": [
+    260000,
+    260063
+  ],
+  "paired_no_drag_records": 192,
+  "drag_pairing": "First 64 existing seeds per condition, same wave phases and sensor RNG, only quadratic translational drag disabled. Fixed reference-prior recovery operator used for diagnostic energy projection.",
+  "uncertainty": "1000 whole-record bootstrap draws for observed mean band-power ratios, conditional on predicted means; not simultaneous intervals",
+  "limitations": "Post-validation model audit, not independent recovery validation. Exact Hann/detrend harmonic expectation; interior FIR/interpolation; continuous truncated-memory comparison excludes RK4 stage holding, nonlinear drag, startup and boundaries. No inverse correction is implemented.",
+  "versions": {
+    "numpy": "2.4.6",
+    "scipy": "1.17.1"
+  },
+  "input_hashes": {
+    "original": {
+      "records": 600,
+      "ordered_filename_and_bytes_sha256": "3ff953f26b5a4d6784f6f2b4286fa5aec54bd2c8d1bf43ca9ed427a88c46c256"
+    },
+    "no_drag": {
+      "records": 192,
+      "ordered_filename_and_bytes_sha256": "b7b17745fc2503f498174121ceb368ad5dec819297bbabafb650aee670573c40"
+    },
+    "noise_only": {
+      "records": 64,
+      "ordered_filename_and_bytes_sha256": "f32e55e1eabde136818645570e77669d8366d0e92d317331904a06c80e73f567"
+    },
+    "calibration": {
+      "records": 600,
+      "ordered_filename_and_bytes_sha256": "ad66325ac6a11766968267a93878d3144747e00ef7960d62d98cf9777594bf13"
+    }
+  },
+  "source_sha256": {
+    "audit_spectral_mean.py": "bf302e976a56a491e66087835ccf770ade1cbb0945e2fd49e28f4530108a0235",
+    "test_spectral_mean.py": "9a57103b78686bd70192a10674a4d07e79880f366bf84c77b157e5389491fad1",
+    "plot_spectral_mean_audit.py": "cfebef14e5ddb8e01a815ddcdcb58b45e2b6d8d50f90afb04ea13cc5487a206e",
+    "invert_waves.py": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+    "batch_invert.py": "3013070c16fe03d23de4d5dbba8c33769a32e53acfec72e95f3c9f409eb502b9",
+    "submarine.py": "c9ff963b92c54f9d925bdc7640aa9bc999afab6e2cdcc37d9c8d17de9f5615c7",
+    "sensors.py": "dc6abe4cf6dc976e760e7784e054bf71efb0152419e851160bec941e90ca7f3c",
+    "sea.py": "929480283e84abc2539689091448615b1c3f138bc6387cc520cf85e3c27c2ac4",
+    "pooled_spectral.py": "40f65cbdb62f4000dcc29c929912a867b4f2e103d31c3e8d8ec7ba198f7199b0"
+  },
+  "hydrodynamics_sha256": "fd304e95d509553ae7ae821c23ad6ade7ac3f483ccb4e78526eb567384ffd92c",
+  "calibration_pools_sha256": {
+    "pool-baseline.npz": "7f4dc403e8834c6b4770294f205faeddb39a8fd7d6d23be5a7341b5ae5da4ddf",
+    "pool-long_period.npz": "8ce78093397cf041991e500b432863cd8f2dbca4681e931ee34a55b4ba33c23f",
+    "pool-weak_waves.npz": "3d2c9f051499f37d8d5e60e4ee084bb56d93adb2dd4d1cf83fe2471d5f82c4c9"
+  },
+  "locally_flat_hann_check": {
+    "segments": 8,
+    "adjacent_window_overlap": 0.16666666666666666,
+    "effective_L": 7.629139072847682,
+    "plugin_M": 8.629139072847682
+  },
+  "verification": {
+    "tests_passed": 39,
+    "source_files_unchanged": 5,
+    "report_hashes_unchanged": 18,
+    "original_first_record_replays": "all three exactly match saved spectra",
+    "covariance_pools_unchanged": true,
+    "all_numeric_outputs_finite": true
+  }
+}
