@@ -1,0 +1,28 @@
+{
+  "status": "research candidate frozen; not approved for production",
+  "M": 8.785033150237455,
+  "tau": 5,
+  "simulation": "6400 uniform wave components, 36 generation directions, 40 BEM frequencies, 90m hull, 15m depth, zero speed; existing nonlinear physics and sensor errors",
+  "processing": "1200s total, 300s discard, 2Hz samples, 200s Hann segments, 50% overlap, 0.05--0.31Hz retained band",
+  "inverse": "12 headings primary, 36 sensitivity; original diagonal inverse with corrected marginal variances; original data-derived prior scale",
+  "excluded": "no pooled covariance, smoothing, split weights, mean correction or fitted bias offsets",
+  "evidence": "existing 600-seed inverse_recovery comparison; no repeat simulation; peak-period scoring added retrospectively, not an untouched test",
+  "adoption": "not approved: marginal variance calibration improves but recovery tradeoffs and posterior undercoverage remain; do not apply to old 40-component data",
+  "sources": {
+    "submarine.py": "c9ff963b92c54f9d925bdc7640aa9bc999afab6e2cdcc37d9c8d17de9f5615c7",
+    "sensors.py": "dc6abe4cf6dc976e760e7784e054bf71efb0152419e851160bec941e90ca7f3c",
+    "sea.py": "929480283e84abc2539689091448615b1c3f138bc6387cc520cf85e3c27c2ac4",
+    "invert_waves.py": "c7251934f061797a67322a1af68cd292c468c931e0dd62d1fab06787e5df8d9a",
+    "batch_invert.py": "3013070c16fe03d23de4d5dbba8c33769a32e53acfec72e95f3c9f409eb502b9",
+    "calibrate_m.py": "366dab7e1fc43f7c7e173dc08688260d1fad8c265031343af39a0d4d5aab8644",
+    "variance_uniform.py": "5ca05d0d9a548d611e983c7e096d05f93485e6a2c71109b9b1e8f6f8b2488735",
+    "check_cross_variance.py": "99ef149ba4a63990fcfce59bf8fdacba2c2e5c4bef3a9ce08076a04b2c1a57f4",
+    "check_inverse_recovery.py": "ce4051c88f869f1c627f217b1a670eeeb402beb2d61059877ce2d4858fc26ab0"
+  },
+  "evidence_hashes": {
+    "m_calibration_protocol.json": "d1db128a6b913abd857b67aba2b84598013dfae5fa2602de11d2ea07115397e3",
+    "cross_variance_protocol.json": "b9a5fc3ceeeb6ca399ef0b31939b483c1afa2c48de0b7c89f1da3c1f276f565e",
+    "inverse_recovery_protocol.json": "c70bf4def0d165d2d112ea99f2feb5056f7aa15226462775d422e3649fc7a341",
+    "inverse_recovery_records.csv": "5443a2a8e72757e443284b1f69b0cdc5cdf88539199b9b3577792f4e9c19a8a7"
+  }
+}
