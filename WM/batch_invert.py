@@ -332,6 +332,8 @@ def main():
     if args.out is None:
         args.out = ("batch_results" + ("_six_dof" if args.model == "six_dof" else "")
                     + ("_positive" if args.positive else "") + ".csv")
+        if os.path.exists(os.path.join(args.root, "generation.json")):
+            args.out = os.path.join(args.root, args.out)
     if args.positive:
         import invert_waves_positive
         iw.invert = invert_waves_positive.invert            # the only change: x >= 0 (NNLS)
