@@ -2,6 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import gamma as G
 from scipy.integrate import cumulative_trapezoid
+from scipy.signal import ZoomFFT
+
+
+def uniform_wave_sum(omega, times, coefficients):
+    """Evaluate Re(sum c exp(-i omega t)) on uniform grids, without a large phase array."""
+    if len(omega) < 2 or len(times) < 2:
+        return np.real(np.exp(-1j * np.outer(times, omega)) @ coefficients)
+    dw, dt = omega[1] - omega[0], times[1] - times[0]
+    if not (np.allclose(np.diff(omega), dw, rtol=0, atol=2e-14)
+            and np.allclose(np.diff(times), dt, rtol=0, atol=1e-10)):
+        raise ValueError("wave synthesis requires uniform frequency and time grids")
+    shifted = coefficients * np.exp(-1j * omega * times[0])[:, None]
+    values = ZoomFFT(len(omega), [0, len(times) * dw * dt], m=len(times), fs=2*np.pi)(shifted, axis=0)
+    return np.real(np.exp(-1j * omega[0] * (times-times[0]))[:, None] * values)
+
 
 class Sea():
 
@@ -14,7 +29,8 @@ class Sea():
                  direction=0.0, # mean direction (radians)
                  gamma=3.3, # peak enhancement factor: 1 for pm / 3.3 for jonswap
                  s=5, # directional spreading factor
-                 seed=42
+                 seed=42,
+                 uniform_frequencies=False
                  ):
         
 
@@ -23,6 +39,7 @@ class Sea():
         self.g = 9.81
         self.Hs, self.Tp, self.gamma, self.s = Hs, Tp, gamma, s
         self.seed, self.omega_range = seed, omega_range
+        self.uniform_frequencies = uniform_frequencies
 
 
         self.theta_m = direction # mean wave direction
@@ -38,6 +55,11 @@ class Sea():
 
         self.f = np.interp(np.linspace(0, E[-1], 2 * n_freq + 1), E, f_fine)[1::2]
         self.delta_f = (E[-1] / n_freq) / self.jonswap(self.f)
+        if uniform_frequencies:
+            edges = np.linspace(f_fine[0], f_fine[-1], n_freq + 1)
+            self.f = (edges[:-1] + edges[1:]) / 2
+            self.delta_f = np.diff(edges)
+            energy = np.diff(np.interp(edges, f_fine, E))
         self.omega = 2 * np.pi * self.f
 
         # wavenumber from deep-water dispersion relation: w² = g k
@@ -45,7 +67,7 @@ class Sea():
         self.phi = rng.uniform(0, 2 * np.pi, (len(self.f), len(self.theta)))
 
         # compute wave frequencies, directions, directional_frequency_spectrum, amplitudes
-        self.S_f = self.jonswap(self.f) # (N,)
+        self.S_f = energy / self.delta_f if uniform_frequencies else self.jonswap(self.f) # (N,)
         self.D = self.directional_spreading(self.theta) # (M,)
         self.directional_frequency_spectrum = self.S_f[:, None] * self.D[None, :] # (N, M)
         self.wave_amplitudes = np.sqrt(2 * self.directional_frequency_spectrum * self.delta_f[:, None] * self.delta_theta[None, :]) # (N, M)
