@@ -41,25 +41,32 @@ TAU = 5.0                 # prior width in units of s (the scale of power per Hz
 def load_rao(repo, cache, use_controller=True):
     """RAO[omega, beta, dof] per metre of wave amplitude, from the Capytaine BEM data, with the depth/heading
     controller of sensors.py included (it adds Kp - i w Kd to surge, sway, heave and yaw)."""
-    if os.path.exists(cache):
-        z = np.load(cache)
-        if bool(z["controller"]) == use_controller:
-            return {k: z[k] for k in z.files}
     sys.path.insert(0, repo)
     import submarine
+    hull = f"L{submarine.LENGTH:g}_R{submarine.RADIUS:g}_depth{submarine.DEPTH:g}"      # cache must match the hull
+    if os.path.exists(cache):
+        z = np.load(cache)
+        if ("hull" in z.files and "controller" in z.files and str(z["hull"]) == hull
+                and bool(z["controller"]) == use_controller):
+            return {k: z[k] for k in z.files}
     from sensors import ControlledSubmarine
-    sub = ControlledSubmarine()
+    sub = ControlledSubmarine(depth=submarine.DEPTH)
     sub.solve_hydrodynamics()
     sub.build_controller()
-    om = submarine.OMEGAS
+    B_visc = np.zeros((6, 6))
+    if hasattr(sub, "build_viscous_damping"):         # new generator: viscous roll/pitch damping
+        sub.build_viscous_damping()
+        B_visc = sub.B_visc
+    om = submarine.OMEGAS if hasattr(submarine, "OMEGAS") else sub.bem_omegas
     rao = np.zeros((len(om), len(sub.theta), 6), complex)
     for i, w in enumerate(om):
-        Z = -w**2 * (sub.M + sub.A[i]) - 1j * w * sub.B[i] + sub.C_hydro
+        Z = -w**2 * (sub.M + sub.A[i]) - 1j * w * (sub.B[i] + B_visc) + sub.C_hydro
         if use_controller:
             Z = Z + np.diag(sub.Kp) - 1j * w * np.diag(sub.Kd)
         rao[i] = np.linalg.solve(Z, sub.F_exc[i].T).T
     out = dict(omega=om, theta=np.asarray(sub.theta), rao=rao, controller=np.array(use_controller),
-               rho=np.array(submarine.RHO), g=np.array(submarine.G), depth=np.array(submarine.DEPTH))
+               rho=np.array(submarine.RHO), g=np.array(submarine.G), depth=np.array(submarine.DEPTH),
+               hull=np.array(hull))
     np.savez(cache, **out)
     return out
 
@@ -77,7 +84,10 @@ def six_dof_rao(repo):
         om = np.linspace(*submarine.OMEGA_RANGE, submarine.N_FREQ)
         th = np.linspace(-np.pi, np.pi, submarine.N_DIR, endpoint=False)
     if hasattr(six_dof, "generator_hull"):             # updated six_dof.py: capsule, controller, pitch bow down
-        hull, flip = six_dof.generator_hull(depth=submarine.DEPTH), 1
+        from sensors import ControlledSubmarine
+        b = ControlledSubmarine(depth=submarine.DEPTH)     # mesh only: CG and sensor origin of the generator's hull
+        hull = six_dof.generator_hull(depth=submarine.DEPTH, length=submarine.LENGTH, radius=submarine.RADIUS, bg=float(b.centre[2] - b.body.center_of_mass[2]), ref_offset=float(b.centre[2] - b.body.rotation_center[2]))
+        flip = 1
     else:
         hull, flip = six_dof.Hull6(length=submarine.LENGTH, radius=submarine.RADIUS, depth=submarine.DEPTH), -1
     rao = np.zeros((len(om), len(th), 6), complex)

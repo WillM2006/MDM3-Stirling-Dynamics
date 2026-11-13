@@ -16,7 +16,8 @@ Re-running resumes: runs already in batch_results.csv are skipped (use --force t
 What it does per run
     1. transfer functions: ControlledSubmarine from sensors.py at the run's depth, with the viscous roll/pitch
        damping (B_visc) and the depth/heading controller, i.e. the same frequency-domain model as the generator.
-       One BEM solve per depth, cached in rao_cache_depth<d>.npz.
+       One BEM solve per hull and depth, cached in rao_cache_L<length>_R<radius>_depth<d>.npz.
+       Hull length, radius, CG and sensor origin are read from submarine.py, for both models.
     2. inversion: invert_waves.py unchanged (same channels, band, Welch settings, prior, M_eff).
        The 36 generator headings are thinned to every --head-step'th one (default 3 -> 12 headings, 30 deg apart).
     3. truth: Sea() rebuilt from params.csv (same seed), so the comparison is with the sea that was simulated.
@@ -80,22 +81,43 @@ def read_channels_fast(data_dir, channels):
 
 
 # ------------------------------------------------------------------ transfer functions with the new generator
+_VEHICLE = {}
+
+
+def vehicle(depth):
+    """hull facts read from the generator files (submarine.py), so nothing is typed in twice:
+    length, radius, CG depth below the hull centre (bg), sensor origin O below the hull centre (ref)"""
+    if depth not in _VEHICLE:
+        import submarine
+        from sensors import ControlledSubmarine
+        sub = ControlledSubmarine(depth=depth)                  # builds the mesh only, no BEM solve
+        centre_z = float(sub.centre[2])
+        _VEHICLE[depth] = dict(length=float(submarine.LENGTH), radius=float(submarine.RADIUS),
+                               bg=centre_z - float(sub.body.center_of_mass[2]),
+                               ref=centre_z - float(sub.body.rotation_center[2]))
+    return _VEHICLE[depth]
+
+
 def rao_six_dof(depth, n_freq, n_dir, omega_range, args):
     """independent model: strip theory (six_dof.generator_hull) on the generator's frequency and heading grids"""
     import six_dof
+    v = vehicle(depth)
     om = np.linspace(*omega_range, n_freq)                       # = Submarine.bem_omegas
     theta = np.linspace(-np.pi, np.pi, n_dir, endpoint=False)    # = Sea.theta
-    hull = six_dof.generator_hull(depth=depth, zeta_roll=args.zeta_roll, zeta_pitch=args.zeta_pitch)
+    hull = six_dof.generator_hull(depth=depth, length=v["length"], radius=v["radius"], bg=v["bg"],
+                                  ref_offset=v["ref"], zeta_roll=args.zeta_roll, zeta_pitch=args.zeta_pitch)
     rao = np.stack([hull.transfer(om, b) for b in theta], axis=1)   # pitch already bow down
     return dict(omega=om, theta=theta, rao=rao, rho=np.array(1025.0), g=np.array(9.81), depth=np.array(depth))
 
 
 def rao_for_depth(depth, n_freq, n_dir, omega_range, args):
-    cache_dir = args.cache_dir
-    cache = os.path.join(cache_dir, f"rao_cache_depth{depth:g}.npz")
+    v = vehicle(depth)
+    # the cache name and contents carry the hull, so a cache from another hull can never be picked up
+    tag = f"L{v['length']:g}_R{v['radius']:g}_depth{depth:g}"
+    cache = os.path.join(args.cache_dir, f"rao_cache_{tag}.npz")
     if os.path.exists(cache):
         z = np.load(cache)
-        if z["rao"].shape[:2] == (n_freq, n_dir):
+        if z["rao"].shape[:2] == (n_freq, n_dir) and str(z["hull"]) == tag:
             return {k: z[k] for k in z.files}
     from sensors import ControlledSubmarine
     from submarine import RHO, G
@@ -110,7 +132,8 @@ def rao_for_depth(depth, n_freq, n_dir, omega_range, args):
         Z = (-w**2 * (sub.M + sub.A[i]) - 1j * w * (sub.B[i] + sub.B_visc) + sub.C_hydro
              + np.diag(sub.Kp) - 1j * w * np.diag(sub.Kd))
         rao[i] = np.linalg.solve(Z, sub.F_exc[i].T).T
-    out = dict(omega=om, theta=np.asarray(sub.theta), rao=rao, rho=np.array(RHO), g=np.array(G), depth=np.array(depth))
+    out = dict(omega=om, theta=np.asarray(sub.theta), rao=rao, rho=np.array(RHO), g=np.array(G), depth=np.array(depth),
+               hull=np.array(tag))
     np.savez(cache, **out)
     return out
 
@@ -183,6 +206,21 @@ def process_run(run_dir, args, rao_store):
     share_true /= share_true.sum()
     dir_true = np.degrees(p["direction"])
     _, spread_true = circ_mean_spread(share_true, beta)
+
+    if args.save_spectra:
+        # the estimate and the truth on the same (frequency, heading) grid, for spectrum plots (make_figures.py)
+        E = sea.wave_amplitudes**2 / 2                                  # variance of each wave component
+        fbin = np.round((sea.f - fb[0]) / df).astype(int)
+        T = np.zeros_like(x)
+        for n in range(len(sea.f)):
+            if 0 <= fbin[n] < len(fb):
+                np.add.at(T[fbin[n]], nearest, E[n] / df)
+        name = os.path.relpath(run_dir, args.root).replace(os.sep, "__").replace("/", "__") + ".npz"
+        os.makedirs(args.save_spectra, exist_ok=True)
+        np.savez(os.path.join(args.save_spectra, name), f=fb, beta=beta, x=x, true_binned=T,
+                 true_Sf=sea.jonswap(fb) * (p["Hs_actual"] / p["Hs"])**2,     # smooth target, scaled to Hs_actual
+                 theta_gen=sea.theta, D_gen=sea.D, Hs_est=hs, Hs_actual=p["Hs_actual"],
+                 **{k: p[k] for k in ("Hs", "Tp", "s", "gamma", "depth", "direction", "seed")})
 
     hs_true = p["Hs_actual"]
     dirdeg = round(float(np.degrees(p["direction"])), 3)
@@ -257,6 +295,7 @@ def preflight():
     print("using generator files:")
     for m in (sea, submarine, sensors):
         print(f"   {m.__name__:10s} {os.path.abspath(m.__file__)}")
+    print(f"hull from submarine.py: length {submarine.LENGTH:g} m, radius {submarine.RADIUS:g} m")
     need = {"n_freq", "n_dir", "omega_range", "depth", "seed"}
     missing = need - set(inspect.signature(submarine.Submarine.__init__).parameters)
     if missing or not hasattr(submarine, "ZETA_VISC"):
@@ -280,6 +319,12 @@ def main():
     ap.add_argument("--meff", type=float, default=iw.M_EFF)
     ap.add_argument("--channels", default=",".join(iw.CHANNELS))
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--save-spectra", default=None, metavar="FOLDER",
+                    help="also save each run's estimated and true spectrum (one small .npz per run) in FOLDER, "
+                         "for the spectrum plots in make_figures.py")
+    ap.add_argument("--only", default=None,
+                    help="only runs whose folder path contains one of these comma-separated pieces, "
+                         "e.g. 'Tp8_s10_gamma3.3_depth15_direction90' (the baseline) or 'direction90' ")
     ap.add_argument("--summary", action="store_true", help="only rebuild the summary from the results csv")
     args = ap.parse_args()
     if args.out is None:
@@ -305,6 +350,9 @@ def main():
               f"zeta_roll {args.zeta_roll}, zeta_pitch {args.zeta_pitch}")
     runs = sorted(os.path.dirname(pth) for pth in glob.glob(os.path.join(args.root, "**", "params.csv"), recursive=True)
                   if os.path.exists(os.path.join(os.path.dirname(pth), "done.flag")))
+    if args.only:
+        keys = [k.strip() for k in args.only.split(",") if k.strip()]
+        runs = [r for r in runs if any(k in os.path.relpath(r, args.root) for k in keys)]
     done = set()
     if os.path.exists(args.out) and not args.force:
         with open(args.out) as fh:
