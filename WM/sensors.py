@@ -15,6 +15,7 @@ from scipy.interpolate import CubicSpline
 from scipy.signal import welch
 
 import submarine
+from sea import uniform_wave_sum
 from submarine import Submarine, RHO, G, LENGTH, RADIUS, DEPTH, T_RAMP
 from submarine_extra import hull_surface, clean_3d, T_SETTLE
 
@@ -188,6 +189,15 @@ def incident_pressure(sub, wave_amps, x_sensor, y_sensor, z_mean, t, chunk=1000)
     phase_offset = np.exp(1j * sub.phi)
     coeff = wave_amps * depth_decay * phase_offset            # (n, m)
 
+    if (sub.uniform_frequencies and len(t) > 1
+            and np.all(x_sensor == x_sensor[0]) and np.all(y_sensor == y_sensor[0])
+            and np.allclose(np.diff(t), t[1]-t[0], rtol=0, atol=1e-10)):
+        spatial = np.exp(1j * sub.k[:, None] * (x_sensor[0]*sub.cos_theta + y_sensor[0]*sub.sin_theta))
+        pressure = uniform_wave_sum(sub.w, t, (coeff*spatial).sum(axis=1)[:, None])[:, 0]
+        return RHO * G * ramp(t) * pressure
+
+    # Bound temporary arrays when evaluating dense waves at changing positions.
+    chunk = min(chunk, max(1, 1_000_000 // coeff.size))
     pressure = np.empty(len(t))
     for start in range(0, len(t), chunk):
         window = slice(start, start + chunk)
@@ -401,6 +411,8 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
 
     sub.control_on = True
     t, X_hist = sub.simulate(duration=t_sim)
+    if not np.isfinite(X_hist).all():
+        raise ValueError("Non-finite hull trajectory; recording was not saved")
     print("simulation (controller ON) done")
     X_free = None
     if COMPARE_CONTROLLER:
