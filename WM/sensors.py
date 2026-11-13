@@ -411,6 +411,8 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
 
     sub.control_on = True
     t, X_hist = sub.simulate(duration=t_sim)
+    if not np.isfinite(X_hist).all():
+        raise ValueError("Non-finite hull trajectory; recording was not saved")
     print("simulation (controller ON) done")
     X_free = None
     if COMPARE_CONTROLLER:
