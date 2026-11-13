@@ -1,6 +1,9 @@
 import argparse
 import os
 import time
+import json
+import hashlib
+from pathlib import Path
 import numpy as np
 from sea import Sea
 from submarine import Submarine
@@ -16,7 +19,8 @@ This warning appears because the largest panel of the mesh has radius (2.354 m) 
 
 
 # CONSTS
-N_FREQ = 40
+N_FREQ = 6400
+N_BEM = 40
 N_DIR = 36
 OMEGA_RANGE = (0.1, 2.0)
 T_SIM = 1200.0
@@ -44,7 +48,7 @@ _solve_hydrodynamics = Submarine.solve_hydrodynamics
 
 def cached_solve_hydrodynamics(self):
     p = self.params
-    key = (p["depth"], p["forward_speed"], p["n_freq"], p["n_dir"], tuple(p["omega_range"]))
+    key = (p["depth"], p["forward_speed"], p["n_bem"], p["n_dir"], tuple(p["omega_range"]))
     if key not in _bem_cache:
         _solve_hydrodynamics(self)
         _bem_cache[key] = {a: getattr(self, a) for a in BEM_ATTRS}
@@ -77,9 +81,28 @@ def run_list(out_root):
         filedir = "sensordata_" + "_".join(f"{k}{round(float(np.rad2deg(v)), 3):g}" if k == "direction" else f"{k}{v}"
                                            for k, v in swept.items())
         for seed in SEED_VALUES:
-            params = dict(n_freq=N_FREQ, n_dir=N_DIR, omega_range=OMEGA_RANGE, seed=seed, **swept)
+            params = dict(n_freq=N_FREQ, n_bem=N_BEM, uniform_frequencies=True, n_dir=N_DIR, omega_range=OMEGA_RANGE, seed=seed, **swept)
             runs.append((os.path.join(out_root, filedir, f"sensordata_{seed}"), params))
     return runs
+
+
+def check_generation(out_root, runs):
+    """Do not resume a dataset made with different settings or generator code."""
+    root = Path(out_root)
+    path = root / "generation.json"
+    source = Path(__file__).resolve().parent
+    expected = dict(t_sim=T_SIM, runs=[p for _, p in runs],
+                    sources={name: hashlib.sha256((source/name).read_bytes()).hexdigest()
+                             for name in ("sea.py", "submarine.py", "sensors.py", "create_data.py")})
+    expected = json.loads(json.dumps(expected))
+    if path.exists():
+        if json.loads(path.read_text()) != expected:
+            raise SystemExit("Dataset settings or generator code differ; use a new --out folder.")
+    elif root.exists() and any(root.iterdir()):
+        raise SystemExit("Output folder has no generation manifest; use a new empty --out folder.")
+    else:
+        root.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(expected, indent=2) + "\n")
 
 
 def is_done(run_dir):
@@ -107,13 +130,14 @@ def print_status(runs, out_root):
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="One-at-a-time sensor data sweep. Re-running resumes: finished runs are skipped, "
                                              "interrupted ones are redone.")
-    ap.add_argument("--out", default=".", help="folder the sensordata_* folders go in (default: the current folder)")
+    ap.add_argument("--out", default="sensor_data_dense", help="new folder for the dense dataset (default: sensor_data_dense)")
     ap.add_argument("--status", action="store_true", help="only show progress, don't run anything")
     ap.add_argument("--force", action="store_true", help="redo every run, including finished ones")
     args = ap.parse_args()
 
     runs = run_list(args.out)
     todo = [(d, p) for d, p in runs if args.force or not is_done(d)]
+    check_generation(args.out, runs)
     n_done = len(runs) - len(todo)
     print(f"{n_done}/{len(runs)} runs finished, {len(todo)} to do   (output folder: {os.path.abspath(args.out)})")
 
@@ -124,6 +148,8 @@ if __name__ == "__main__":
     t_start = time.time()
     for i, (run_dir, params) in enumerate(todo, 1):
         t_run = time.time()
+        flag = Path(run_dir) / DONE_FLAG
+        flag.unlink(missing_ok=True)
         create_sensor_data(out_dir=run_dir, t_sim=T_SIM, **params)
         with open(os.path.join(run_dir, DONE_FLAG), "w") as f:
             f.write(f"finished {time.strftime('%Y-%m-%d %H:%M:%S')} in {time.time() - t_run:.1f} s\n")

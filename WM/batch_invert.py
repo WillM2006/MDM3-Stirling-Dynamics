@@ -157,11 +157,12 @@ def wrap_deg(a):
 def process_run(run_dir, args, rao_store):
     from sea import Sea
     p = read_params(run_dir)
-    key = p["depth"]
+    n_bem = int(p.get("n_bem", p["n_freq"]))
+    key = (p["depth"], n_bem, int(p["n_dir"]), p["omega_min"], p["omega_max"])
     if key not in rao_store:
         try:
             build = rao_six_dof if args.model == "six_dof" else rao_for_depth
-            rao_store[key] = build(p["depth"], int(p["n_freq"]), int(p["n_dir"]),
+            rao_store[key] = build(p["depth"], n_bem, int(p["n_dir"]),
                                    (p["omega_min"], p["omega_max"]), args)
         except Exception as e:
             raise RaoError(str(e)) from e
@@ -199,7 +200,8 @@ def process_run(run_dir, args, rao_store):
 
     # truth: the simulated sea, its 36 headings grouped onto the inversion headings (nearest, circular)
     sea = Sea(n_freq=int(p["n_freq"]), n_dir=int(p["n_dir"]), omega_range=(p["omega_min"], p["omega_max"]),
-              Hs=p["Hs"], Tp=p["Tp"], direction=p["direction"], gamma=p["gamma"], s=p["s"], seed=int(p["seed"]))
+              Hs=p["Hs"], Tp=p["Tp"], direction=p["direction"], gamma=p["gamma"], s=p["s"], seed=int(p["seed"]),
+              uniform_frequencies=bool(p.get("uniform_frequencies", 0)))
     frac = sea.D * sea.delta_theta                                      # share of power per generator heading
     nearest = np.argmin(abs(wrap_deg(np.degrees(sea.theta[:, None] - beta[None, :]))), axis=1)
     share_true = np.bincount(nearest, weights=frac, minlength=len(beta))
