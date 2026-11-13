@@ -1,0 +1,8 @@
+{
+  "spectral_records": 600,
+  "records_sha256": "0a37ba3cfe65fe352e849b115041fe94b8faa5813d138db5737c55b055269ccf",
+  "evaluation_script_sha256": "ce4051c88f869f1c627f217b1a670eeeb402beb2d61059877ce2d4858fc26ab0",
+  "analysis_script_sha256": "1c2df584124cc18c1d43cdc6766e8ce4e2907abbf52981835d89a59460746683",
+  "diagnostic_script_sha256": "56c433c6e6a0f9fa092fbfdf031cabdea11a1eca65d00b8d586bc07c1838077e",
+  "diagnostic_scope": "post-check covariance diagnostic; no retuning or production covariance replacement"
+}

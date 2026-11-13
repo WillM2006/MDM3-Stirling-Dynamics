@@ -1,0 +1,40 @@
+{
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "groups": {
+    "baseline": 250000,
+    "long_period": 251000,
+    "weak_waves": 252000
+  },
+  "calibration": {
+    "baseline": [
+      "train_baseline",
+      207000
+    ],
+    "long_period": [
+      "test_long_period",
+      209000
+    ],
+    "weak_waves": [
+      "test_weak_waves",
+      210000
+    ]
+  },
+  "primary": "12 headings, baseline-reference gain and baseline correlation pool fixed for all test conditions",
+  "sensitivity": "all three gains, both heading grids, every correlation pool and test condition; no best-pool selection",
+  "candidate": "row-rescale each frozen pooled factor to target-record corrected marginal variances; retain Hann frequency coupling",
+  "controls": "previous absolute pooled covariance; within-frequency-only ablation; independent representative target-pool marginal levels as an explicitly idealised diagnostic",
+  "decision": "variance agreement requires the 95% interval inside 0.9--1.1; inclusion of one is inconclusive; report uncentred 68/95 coverage and interval width, without fitting either",
+  "limitations": "retrospective development test on previously examined data; conditional bootstrap excludes refitting M, gain and pool; no proof of physical or untouched final validation",
+  "invariants": "all point estimates and biases unchanged; no simulation, inversion, M fit, correlation fit, prior change, selector or empirical inflation",
+  "bootstrap": 1000,
+  "source_sha256": "195fbdf170d4316d90f1b47cb5c7c4e8c71d21f756d73ab561db661eab548846",
+  "parent_protocol_sha256": "c8343133c2385286aedcfb8f558251e7401db8b9c2e1d7855a9afc7bb1b552f5",
+  "parent_manifest_sha256": "2f31ca12f8dde1a0f12800e7e4c5cae01bbb83dbc6f701c5dee6044d6979321b",
+  "score_sha256": "b5bc4d0416cf37006a75448ce6a5addaf9e006527e4e18873b27e8946aad7c02",
+  "pool_hashes": {
+    "pool-baseline.npz": "7f4dc403e8834c6b4770294f205faeddb39a8fd7d6d23be5a7341b5ae5da4ddf",
+    "pool-long_period.npz": "8ce78093397cf041991e500b432863cd8f2dbca4681e931ee34a55b4ba33c23f",
+    "pool-weak_waves.npz": "3d2c9f051499f37d8d5e60e4ee084bb56d93adb2dd4d1cf83fe2471d5f82c4c9"
+  }
+}

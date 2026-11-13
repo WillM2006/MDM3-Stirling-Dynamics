@@ -1,0 +1,7 @@
+{
+  "reason": "unscaled normal-equation Cholesky failed in transfer before completed evaluation",
+  "covariance_rule_unchanged": true,
+  "original_pool_source_sha256": "49176e409b5a0da0e8332b5e5dc9954b7ca784af9c4813790e2335411f06be84",
+  "replacement": "equivalent prior-aware block-SVD preconditioner; machine-precision rank cutoff; M, tau and covariance files unchanged",
+  "preceding_cached_records": 215
+}

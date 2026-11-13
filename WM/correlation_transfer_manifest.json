@@ -1,0 +1,12 @@
+{
+  "comparisons": 216,
+  "parent_inputs_verified": 1200,
+  "reference_cache_hashes": {
+    "variance_output/fixed_estimator_scatter/baseline-projected.npz": "8b59bef56159a50fe92bc0dd2cf2b4d3e1f363b1ff6324268c570dd7dc1c8b2c",
+    "variance_output/fixed_estimator_scatter/long_period-projected.npz": "1efd18f384305c0c52ee8c5856c2e18a983fc14da47887cc56e2109e59aedcaf",
+    "variance_output/fixed_estimator_scatter/weak_waves-projected.npz": "6a9d0d8e90bc0cb0b67ddf88c662653ab296563bb886df07def9d40949662666"
+  },
+  "score_sha256": "b5bc4d0416cf37006a75448ce6a5addaf9e006527e4e18873b27e8946aad7c02",
+  "source_sha256": "195fbdf170d4316d90f1b47cb5c7c4e8c71d21f756d73ab561db661eab548846",
+  "protocol_sha256": "392aea332fd2c30228f2f9a4b3472af8fd578435246487e13947be2570402aaf"
+}

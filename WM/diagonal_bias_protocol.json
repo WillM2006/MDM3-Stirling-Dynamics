@@ -1,0 +1,20 @@
+{
+  "M": 8.785033150237455,
+  "tau": 5.0,
+  "primary_headings": 12,
+  "sensitivity_headings": 36,
+  "test": "existing 200 records per condition, 250xxx; saved point estimates unchanged",
+  "reference": "400 independent sensor spectra per condition, 230xxx and 240xxx; no truth used in gains",
+  "decomposition": [
+    "model response/prior shrinkage",
+    "independent reference mean mismatch",
+    "test-reference mean/donor difference",
+    "same-record gain-data coupling"
+  ],
+  "identity": "sum of four terms equals original mean energy bias; all distinct gain/data donor pairs, not independent replicates",
+  "sensitivity": "freeze prior scales at independent reference spectral mean, retain recording-dependent noise weights; diagnostic only",
+  "inference": "1000 whole-record bootstrap draws of matched test gain/data pairs and separate reference spectra; conditional on M and response operator; prior-frozen sensitivity conditional on reference scales",
+  "limits": "retrospective diagnostic, not deployable correction or physical validation; mean mismatch does not identify its physical source; adaptive gain includes both variance weights and prior scale",
+  "source_sha256": "cf2280a219a63d39e69b32274a3c3f9bec31f63242f3a2f1034b403314a754b1",
+  "score_sha256": "b5bc4d0416cf37006a75448ce6a5addaf9e006527e4e18873b27e8946aad7c02"
+}

@@ -1,0 +1,35 @@
+{
+  "prediction_sha256": "dc15ef0b7f1601f3691968bdfefc5540ac05a9dd8ae9a7d2e87a9976bc441a54",
+  "protocol_sha256": "76494f66811993f1f245e89b4f3c18b9faabd05c1d1a50c263f15eb959366a87",
+  "numerical": [
+    {
+      "headings": 12,
+      "relative_standardised_operator_refinement": 6.928720214846046e-06
+    },
+    {
+      "headings": 36,
+      "relative_standardised_operator_refinement": 6.928718950454029e-06
+    }
+  ],
+  "stage": "prediction rules, validation means, noise offset and normalisation frozen before fresh outcomes",
+  "final_validation": {
+    "native_records": 600,
+    "raw_record_ordered_filename_and_bytes_sha256": "d19febe94ef6e8b76fb0c097169932ee610af7d567419f3f1e36ba442bbcfe18",
+    "inverse_fits": 2400,
+    "failed_fits": 0,
+    "tests_passed": 45,
+    "unchanged_production_sources": 5,
+    "unchanged_report_hashes": 18,
+    "recovery_status": "exploratory reuse of the forward test records; untouched final recovery validation remains pending"
+  },
+  "final_source_sha256": {
+    "plot_processed_prediction.py": "5ce200fdc3ebffd4b09efc06bb78101d6574f84a96804b3ab40052518313834c",
+    "test_processed_spectral.py": "f0ec04afc954896dacf037e702aafa2d73be47f7a4315d097f6859be30562d91",
+    "test_processed_prediction.py": "9e43357e55b33e9d39711374447ce46eead89bdfa98f7556cd7d7d84e0735724",
+    "check_processed_prediction.py": "d80b85080e32abf43fe992caa2d80825bb922696cc4cf1509ff2f47e0234020f",
+    "processed_spectral.py": "fe8c40213d1256839cc32f6b0a38c01e52425a483f2a39e2b66fc4766203de64",
+    "check_processing_recovery.py": "28eedc5fc759ea5654c02152341c54d5a845accb23445d5bc62f6341c61ddb9f",
+    "test_processing_recovery.py": "32e2dfc511db057679fb9a90d63d69d64021d27cdc32d4958c8f3ef73b5eb631"
+  },
+  "recovery_protocol_sha256": "f7e82a61eb2d9781d2f830fa29417d75e5b7c1d99f367ee8cef8317e43701f9b"
+}

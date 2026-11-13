@@ -1,0 +1,12 @@
+{
+  "M": 8.785033150237455,
+  "tau": 2.667278144206317,
+  "derivation": "M*tau^2=2.5*5^2; fixed without recovery outcomes",
+  "data": "existing 230xxx cohorts, 200 per condition; 12 headings primary, 36 sensitivity; retrospective mechanism diagnostic",
+  "invariant": "original data-derived scales, response model, simulation, M and marginal variance formulas; only tau changes in corrected candidate",
+  "control": "old equal-cross formula with new M and balance-preserving tau must reproduce old M=2.5 tau=5 point spectrum for every record; covariance scales by 2.5/M and need not reproduce old intervals",
+  "comparisons": "original; corrected tau=5; corrected balance-preserving tau; all outcomes retained, no selection",
+  "inference": "1000 paired whole-record bootstrap draws; pointwise intervals; no claim of fresh validation or optimal tau",
+  "source_sha256": "7ffbc225a124724de46711dce33077a1a98163e869418bd895f7f4cdfe603581",
+  "scores_sha256": "5443a2a8e72757e443284b1f69b0cdc5cdf88539199b9b3577792f4e9c19a8a7"
+}
