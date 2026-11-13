@@ -2,6 +2,21 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import gamma as G
 from scipy.integrate import cumulative_trapezoid
+from scipy.signal import ZoomFFT
+
+
+def uniform_wave_sum(omega, times, coefficients):
+    """Evaluate Re(sum c exp(-i omega t)) on uniform grids, without a large phase array."""
+    if len(omega) < 2 or len(times) < 2:
+        return np.real(np.exp(-1j * np.outer(times, omega)) @ coefficients)
+    dw, dt = omega[1] - omega[0], times[1] - times[0]
+    if not (np.allclose(np.diff(omega), dw, rtol=0, atol=2e-14)
+            and np.allclose(np.diff(times), dt, rtol=0, atol=1e-10)):
+        raise ValueError("wave synthesis requires uniform frequency and time grids")
+    shifted = coefficients * np.exp(-1j * omega * times[0])[:, None]
+    values = ZoomFFT(len(omega), [0, len(times) * dw * dt], m=len(times), fs=2*np.pi)(shifted, axis=0)
+    return np.real(np.exp(-1j * omega[0] * (times-times[0]))[:, None] * values)
+
 
 class Sea():
 
@@ -20,6 +35,8 @@ class Sea():
                                # and spreading; overrides the single-system args above. Wind sea + swell = two systems
                                # with different Hs/Tp; two directions of one sea = two systems with the same Tp/gamma
                                # (the power splits as Hs_i², total Hs = sqrt(Σ Hs_i²))
+                 uniform_frequencies=False, # evenly spaced frequencies (each bin's energy integrated) for the fast
+                                            # FFT wave synthesis; False = equal-energy bins
                  ):
 
         self.g = 9.81
@@ -41,6 +58,7 @@ class Sea():
         rng = np.random.default_rng(seed)
 
         self.seed, self.omega_range = seed, omega_range
+        self.uniform_frequencies = uniform_frequencies
 
         # summary values (printing / plots only, the truth is self.systems): total Hs = sqrt(Σ Hs_i²), the rest from
         # the dominant system = the one with the tallest S(f) peak, so Tp is (to within the overlap of the spectra) the
@@ -61,6 +79,10 @@ class Sea():
 
         self.f = np.interp(np.linspace(0, E[-1], 2 * n_freq + 1), E, f_fine)[1::2]
         self.delta_f = (E[-1] / n_freq) / self.jonswap(self.f)
+        if uniform_frequencies:
+            edges = np.linspace(f_fine[0], f_fine[-1], n_freq + 1)
+            self.f = (edges[:-1] + edges[1:]) / 2
+            self.delta_f = np.diff(edges)
         self.omega = 2 * np.pi * self.f
 
         # wavenumber from deep-water dispersion relation: w² = g k
@@ -68,10 +90,15 @@ class Sea():
         self.phi = rng.uniform(0, 2 * np.pi, (len(self.f), len(self.theta)))
 
         # compute wave frequencies, directions, directional_frequency_spectrum, amplitudes
-        self.S_sys = [self._jonswap_one(self.f, q["Hs"], q["Tp"], q["gamma"]) for q in self.systems] # each (N,)
+        if uniform_frequencies:   # each system's energy in each uniform bin / bin width (their sum is the total above)
+            self.S_sys = [np.diff(np.interp(edges, f_fine, cumulative_trapezoid(
+                              self._jonswap_one(f_fine, q["Hs"], q["Tp"], q["gamma"]), f_fine, initial=0))) / self.delta_f
+                          for q in self.systems] # each (N,)
+        else:
+            self.S_sys = [self._jonswap_one(self.f, q["Hs"], q["Tp"], q["gamma"]) for q in self.systems] # each (N,)
         self.D_sys = [self._cos2s(self.theta, q["direction"], q["s"]) for q in self.systems] # each (M,), integrates to 1
         self.directional_frequency_spectrum = sum(S[:, None] * D[None, :] for S, D in zip(self.S_sys, self.D_sys)) # (N, M)
-        self.S_f = self.jonswap(self.f) # (N,) total
+        self.S_f = sum(self.S_sys) # (N,) total
         self.D = self.directional_spreading(self.theta) # (M,) energy-weighted over frequency
         self.wave_amplitudes = np.sqrt(2 * self.directional_frequency_spectrum * self.delta_f[:, None] * self.delta_theta[None, :]) # (N, M)
 
@@ -103,7 +130,7 @@ class Sea():
         """Directional Spectrum / spreading function / D(θ): the energy-weighted mix of every system's cos^2s peak,
         D = Σ_i m0_i D_i / Σ_i m0_i (m0_i = power of system i), so a system's share is its power whatever its spread;
         with one system it is the plain cos^2s spreading at (direction, s)."""
-        m0 = [np.sum(self._jonswap_one(self.f, q["Hs"], q["Tp"], q["gamma"]) * self.delta_f) for q in self.systems] # power in the sea's bins
+        m0 = [np.sum(S * self.delta_f) for S in self.S_sys] # power of each system in the sea's bins
         D = sum(m * self._cos2s(theta, q["direction"], q["s"]) for m, q in zip(m0, self.systems))
         return D / np.sum(D * self.delta_theta)
 

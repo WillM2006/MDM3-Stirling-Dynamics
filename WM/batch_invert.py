@@ -1,5 +1,6 @@
 """
-Batch Bayesian inversion over the create_data.py sweep, scored against each run's true sea.
+Batch Bayesian inversion over the create_data.py data (sea states or the one-at-a-time sweep), scored against each
+run's true sea.
 
 Put this file next to invert_waves.py, sea.py, submarine.py, sensors.py and submarine_extra.py, then run
     python batch_invert.py --root "sensor_data - Copy"              # inverts every finished run, writes batch_results.csv
@@ -10,7 +11,8 @@ Put this file next to invert_waves.py, sea.py, submarine.py, sensors.py and subm
     python batch_invert.py --root "sensor_data - Copy" --positive        # wave power >= 0 (invert_waves_positive.py)
                                                                           # -> batch_results_positive.csv
 
-Each run folder needs params.csv, sensor_info.csv and the sensor csvs; runs without done.flag are skipped.
+Each run folder needs params.csv, systems.csv, sensor_info.csv and the sensor csvs; runs without done.flag are skipped.
+(Older runs with no systems.csv still work: their one wave system is read from params.csv.)
 Re-running resumes: runs already in batch_results.csv are skipped (use --force to redo everything).
 
 What it does per run
@@ -20,13 +22,20 @@ What it does per run
        Hull length, radius, CG and sensor origin are read from submarine.py, for both models.
     2. inversion: invert_waves.py unchanged (same channels, band, Welch settings, prior, M_eff).
        The 36 generator headings are thinned to every --head-step'th one (default 3 -> 12 headings, 30 deg apart).
-    3. truth: Sea() rebuilt from params.csv (same seed), so the comparison is with the sea that was simulated.
+    3. truth: Sea(systems=...) rebuilt from systems.csv (same seed), so the comparison is with the sea that was simulated,
+       including mixed (wind sea + swell) and two-direction seas.
+
+Columns Hs, Tp, s, gamma, direction describe the true sea: total Hs = sqrt(sum Hs_i^2), the rest from the dominant
+system (tallest S(f) peak, so Tp is the peak period of the total spectrum). n_systems = number of wave systems.
+swept = the swept parameter (sweep runs) or the sea state, e.g. "O_mixed" (seastate_* runs).
 
 Metrics (one row per run)
     hs_err_pct      100 (Hs_est - Hs_actual) / Hs_actual
     z_hs            (Hs_est - Hs_actual) / posterior sd;  |z| < 1 should happen ~68% of the time if the error bar is honest
     tp_err_pct      100 (Tp_est - Tp) / Tp, Tp_est from the peak Welch bin (0.005 Hz steps, so coarse)
-    dir_err_deg     estimated mean direction - true mean direction, wrapped to +-180
+    dir_err_deg     estimated mean direction - true mean direction, wrapped to +-180. True mean direction = the system's
+                    direction for one system, the power-weighted circular mean otherwise (crossing seas have no single
+                    direction, so for n_systems > 1 use wrong_dir instead)
     wrong_dir       fraction of power in the wrong heading: 0.5 * sum |share_est - share_true| (0 perfect, 1 all wrong)
     spread_*_deg    circular spread sqrt(2(1-R)); true one computed on the inversion's heading grid, estimate from the
                     positive part of the estimate (negative power makes R meaningless)
@@ -46,7 +55,7 @@ import invert_waves as iw  # noqa: E402
 
 BASELINE = dict(Hs=1.7, Tp=8.0, s=10.0, gamma=3.3, depth=15.0, direction=90.0)   # from create_data.py (direction in deg)
 SWEPT = list(BASELINE)
-FIELDS = ["run", "swept", "Hs", "Tp", "s", "gamma", "depth", "direction", "seed",
+FIELDS = ["run", "swept", "n_systems", "Hs", "Tp", "s", "gamma", "depth", "direction", "seed",
           "Hs_actual", "Hs_est", "sd_Hs", "hs_err_pct", "z_hs", "Tp_est", "tp_err_pct",
           "dir_true_deg", "dir_est_deg", "dir_err_deg", "wrong_dir", "spread_true_deg", "spread_est_deg", "neg_frac"]
 
@@ -56,6 +65,19 @@ def read_params(run_dir):
     with open(os.path.join(run_dir, "params.csv")) as fh:
         row = next(csv.DictReader(fh))
     return {k: float(v) for k, v in row.items()}
+
+
+SYSTEM_KEYS = ("Hs", "Tp", "gamma", "s", "direction")
+
+
+def read_systems(run_dir, p):
+    """the true sea: one dict(Hs, Tp, gamma, s, direction_rad) per wave system from systems.csv;
+    older runs without systems.csv had one system, stored in params.csv"""
+    path = os.path.join(run_dir, "systems.csv")
+    if os.path.exists(path):
+        rows = np.loadtxt(path, delimiter=",", skiprows=1, ndmin=2)
+        return [dict(zip(SYSTEM_KEYS, map(float, r))) for r in rows]
+    return [{k: p[k] for k in SYSTEM_KEYS}]
 
 
 def read_channels_fast(data_dir, channels):
@@ -157,11 +179,12 @@ def wrap_deg(a):
 def process_run(run_dir, args, rao_store):
     from sea import Sea
     p = read_params(run_dir)
-    key = p["depth"]
+    n_bem = int(p.get("n_bem", p["n_freq"]))
+    key = (p["depth"], n_bem, int(p["n_dir"]), p["omega_min"], p["omega_max"])
     if key not in rao_store:
         try:
             build = rao_six_dof if args.model == "six_dof" else rao_for_depth
-            rao_store[key] = build(p["depth"], int(p["n_freq"]), int(p["n_dir"]),
+            rao_store[key] = build(p["depth"], n_bem, int(p["n_dir"]),
                                    (p["omega_min"], p["omega_max"]), args)
         except Exception as e:
             raise RaoError(str(e)) from e
@@ -198,14 +221,22 @@ def process_run(run_dir, args, rao_store):
     _, spread_est = circ_mean_spread(np.clip(P, 0, None), beta)
 
     # truth: the simulated sea, its 36 headings grouped onto the inversion headings (nearest, circular)
+    systems = read_systems(run_dir, p)
     sea = Sea(n_freq=int(p["n_freq"]), n_dir=int(p["n_dir"]), omega_range=(p["omega_min"], p["omega_max"]),
-              Hs=p["Hs"], Tp=p["Tp"], direction=p["direction"], gamma=p["gamma"], s=p["s"], seed=int(p["seed"]))
+              systems=systems, seed=int(p["seed"]), uniform_frequencies=bool(p.get("uniform_frequencies", 0)))
     frac = sea.D * sea.delta_theta                                      # share of power per generator heading
     nearest = np.argmin(abs(wrap_deg(np.degrees(sea.theta[:, None] - beta[None, :]))), axis=1)
     share_true = np.bincount(nearest, weights=frac, minlength=len(beta))
     share_true /= share_true.sum()
-    dir_true = np.degrees(p["direction"])
+    if len(systems) == 1:
+        dir_true = np.degrees(systems[0]["direction"])
+    else:                                                               # power-weighted circular mean on the generator grid
+        dir_true, _ = circ_mean_spread(frac, sea.theta)
     _, spread_true = circ_mean_spread(share_true, beta)
+
+    # the true sea's summary (= the inputs for one system); direction in degrees, 0-360
+    vals = dict(Hs=sea.Hs, Tp=sea.Tp, s=sea.s, gamma=sea.gamma, depth=p["depth"],
+                direction=round(float(np.degrees(sea.theta_m)) % 360, 3))
 
     if args.save_spectra:
         # the estimate and the truth on the same (frequency, heading) grid, for spectrum plots (make_figures.py)
@@ -218,17 +249,21 @@ def process_run(run_dir, args, rao_store):
         name = os.path.relpath(run_dir, args.root).replace(os.sep, "__").replace("/", "__") + ".npz"
         os.makedirs(args.save_spectra, exist_ok=True)
         np.savez(os.path.join(args.save_spectra, name), f=fb, beta=beta, x=x, true_binned=T,
-                 true_Sf=sea.jonswap(fb) * (p["Hs_actual"] / p["Hs"])**2,     # smooth target, scaled to Hs_actual
+                 true_Sf=sea.jonswap(fb) * (p["Hs_actual"] / sea.Hs)**2,      # smooth target (total), scaled to Hs_actual
                  theta_gen=sea.theta, D_gen=sea.D, Hs_est=hs, Hs_actual=p["Hs_actual"],
-                 **{k: p[k] for k in ("Hs", "Tp", "s", "gamma", "depth", "direction", "seed")})
+                 systems=np.array([[q[k] for k in SYSTEM_KEYS] for q in systems]),   # rows Hs, Tp, gamma, s, direction_rad
+                 seed=p["seed"], **vals)
 
     hs_true = p["Hs_actual"]
-    dirdeg = round(float(np.degrees(p["direction"])), 3)
-    vals = dict(Hs=p["Hs"], Tp=p["Tp"], s=p["s"], gamma=p["gamma"], depth=p["depth"], direction=dirdeg)
-    off = [k for k in SWEPT if not np.isclose(vals[k], BASELINE[k])]
-    return dict(run=os.path.relpath(run_dir, args.root), swept=off[0] if off else "baseline", **vals, seed=int(p["seed"]),
+    folder = os.path.basename(os.path.dirname(run_dir))                 # seastate_O_mixed / sensordata_Hs1.7_...
+    if folder.startswith("seastate_"):
+        swept = folder[len("seastate_"):]                               # e.g. "O_mixed"
+    else:
+        off = [k for k in SWEPT if not np.isclose(vals[k], BASELINE[k])]
+        swept = off[0] if off else "baseline"
+    return dict(run=os.path.relpath(run_dir, args.root), swept=swept, n_systems=len(systems), **vals, seed=int(p["seed"]),
                 Hs_actual=hs_true, Hs_est=hs, sd_Hs=sd_hs, hs_err_pct=100 * (hs - hs_true) / hs_true,
-                z_hs=(hs - hs_true) / sd_hs, Tp_est=tp_est, tp_err_pct=100 * (tp_est - p["Tp"]) / p["Tp"],
+                z_hs=(hs - hs_true) / sd_hs, Tp_est=tp_est, tp_err_pct=100 * (tp_est - sea.Tp) / sea.Tp,
                 dir_true_deg=dir_true, dir_est_deg=dir_est, dir_err_deg=wrap_deg(dir_est - dir_true),
                 wrong_dir=0.5 * np.abs(share_est - share_true).sum(), spread_true_deg=spread_true,
                 spread_est_deg=spread_est, neg_frac=np.maximum(-x, 0).sum() / np.abs(x).sum())
@@ -240,10 +275,49 @@ METRICS = [("hs_err_pct", "Hs error (%)"), ("dir_err_deg", "direction error (deg
            ("cover", "1-sigma coverage of Hs")]
 
 
+def summarise_states(df, out_prefix):
+    """seastate_* runs: mean and sd over seeds per sea state, one panel per metric"""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    rows = []
+    for state, g in df.groupby("swept", sort=True):
+        r = dict(state=state, n_systems=int(g["n_systems"].iloc[0]), n_seeds=len(g))
+        for m, _ in METRICS:
+            r[m + "_mean"], r[m + "_sd"] = g[m].mean(), g[m].std(ddof=1) if len(g) > 1 else np.nan
+        rows.append(r)
+    import pandas as pd
+    summ = pd.DataFrame(rows)
+    summ.to_csv(out_prefix + ".csv", index=False)
+
+    ink, muted, grid, mark = "#1f1f1f", "#6b6b6b", "#e4e4e4", "#2f6db3"
+    x = np.arange(len(summ))
+    fig, axs = plt.subplots(len(METRICS), 1, figsize=(max(8, 0.45 * len(summ)), 2.1 * len(METRICS)), sharex=True)
+    for ax, (m, label) in zip(axs, METRICS):
+        ax.errorbar(x, summ[m + "_mean"], yerr=summ[m + "_sd"], color=mark, lw=0, elinewidth=1, marker="o", ms=5, capsize=3)
+        ax.axhline(0.68 if m == "cover" else 0.0, color=muted, lw=1, ls="--")
+        ax.grid(color=grid, lw=0.6)
+        for sp in ("top", "right"):
+            ax.spines[sp].set_visible(False)
+        ax.tick_params(colors=muted, labelsize=8)
+        ax.set_ylabel(label, color=ink, fontsize=9)
+    axs[-1].set_xticks(x, summ["state"], rotation=60, ha="right")
+    fig.suptitle("Inversion quality per sea state: mean and sd over seeds (dashed = ideal)", color=ink, fontsize=10)
+    fig.tight_layout()
+    fig.savefig(out_prefix + ".png", dpi=130)
+    print(f"saved {out_prefix}.csv and {out_prefix}.png")
+
+
 def summarise(results_csv, out_prefix):
     import pandas as pd
     df = pd.read_csv(results_csv)
     df["cover"] = (df["z_hs"].abs() < 1).astype(float)
+    is_sweep = df["swept"].isin(SWEPT + ["baseline"])
+    if (~is_sweep).any():
+        summarise_states(df[~is_sweep], out_prefix + "_states")
+    df = df[is_sweep]
+    if df.empty:
+        return
     rows = []
     for name in SWEPT:
         sub = df[(df["swept"] == name) | (df["swept"] == "baseline")]
@@ -306,7 +380,7 @@ def preflight():
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--root", required=True, help="folder holding the sensordata_* folders")
+    ap.add_argument("--root", required=True, help="folder holding the seastate_* / sensordata_* folders")
     ap.add_argument("--out", default=None, help="default batch_results.csv (capytaine) or batch_results_six_dof.csv")
     ap.add_argument("--model", choices=["capytaine", "six_dof"], default="capytaine",
                     help="capytaine = the generator's own transfer functions (best case); six_dof = independent strip theory")
@@ -330,6 +404,8 @@ def main():
     if args.out is None:
         args.out = ("batch_results" + ("_six_dof" if args.model == "six_dof" else "")
                     + ("_positive" if args.positive else "") + ".csv")
+        if os.path.exists(os.path.join(args.root, "generation.json")):
+            args.out = os.path.join(args.root, args.out)
     if args.positive:
         import invert_waves_positive
         iw.invert = invert_waves_positive.invert            # the only change: x >= 0 (NNLS)

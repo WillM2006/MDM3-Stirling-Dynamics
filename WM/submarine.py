@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import xarray as xr
 import capytaine as cpt
 
-from sea import Sea
+from sea import Sea, uniform_wave_sum
 
 # mesh.volume comes out at 5408 m³ but πr²L = 5498 m³ ----------------------------------------------------------------------------
 
@@ -59,10 +59,11 @@ class Submarine(Sea):
                 # does not need the sea's resolution: n_freq=400, n_bem=40 gives 400 wave components for the cost of
                 # a 40-frequency BEM solve (the excitation is interpolated onto the sea frequencies in build_excitation)
                 n_bem=None,
+                uniform_frequencies=False, # evenly spaced sea frequencies -> fast FFT wave synthesis (see Sea)
                 ):
 
         super().__init__(n_freq=n_freq, n_dir=n_dir, omega_range=omega_range, Hs=Hs, Tp=Tp, direction=direction, gamma=gamma, s=s, seed=seed,
-                         systems=systems)
+                         systems=systems, uniform_frequencies=uniform_frequencies)
         
         self.depth = depth
         self.forward_speed = forward_speed
@@ -90,7 +91,8 @@ class Submarine(Sea):
 
         # the sea itself (Hs, Tp, gamma, s, direction) is only in systems (-> systems.csv), always the list Sea built
         self.params = dict(n_freq=n_freq, n_bem=n_bem, n_dir=n_dir, omega_range=omega_range, seed=seed,
-                   systems=self.systems, depth=depth, forward_speed=forward_speed)
+                   systems=self.systems, depth=depth, forward_speed=forward_speed,
+                   uniform_frequencies=int(uniform_frequencies))
 
 
 
@@ -155,6 +157,7 @@ class Submarine(Sea):
            F_exc(t) = Re[ sum_nm F(w_n, theta_m) * a_nm * e^(i(k_n . x - w_n t + phi_nm)) ]
            (capytaine uses e^(-iwt) time dependence, matching cos(k.x - wt + phi) in sea.py)"""
 
+        self._forcing = None
         self.w = 2 * np.pi * self.f # Sea frequencies in rad/s
 
         # interpolate the BEM excitation onto the Sea frequencies, 0 outside OMEGAS (decayed with depth)
@@ -170,6 +173,10 @@ class Submarine(Sea):
 
     def excitation(self, t, x, y):
         """Wave excitation force at time t, phase shifted to the sub's current horizontal position"""
+        if self._forcing is not None and x == 0 and y == 0:
+            index = int(round(t / (dt/2)))
+            if 0 <= index < len(self._forcing) and abs(t - index*dt/2) < 1e-9:
+                return self._forcing[index]
         phase = np.exp(1j * (self.k[:, None] * (x * self.cos_theta + y * self.sin_theta) - self.w[:, None] * t)) # (n, m)
         ramp = 0.5 * (1 - np.cos(np.pi * t / T_RAMP)) if t < T_RAMP else 1.0
         return ramp * np.einsum("nm,nmd->d", phase, self.F_hat).real
@@ -239,6 +246,11 @@ class Submarine(Sea):
         """Step the sub forward n times, returns times (N,) and states (N, 12)"""
         n_steps = int(round(duration / dt))
         T = np.arange(n_steps + 1) * dt
+        self._forcing = None
+        if self.uniform_frequencies and self.forward_speed == 0:
+            half_time = np.arange(2*n_steps + 1) * (dt/2)
+            ramp = 0.5 * (1 - np.cos(np.pi * np.minimum(half_time / T_RAMP, 1)))
+            self._forcing = ramp[:, None] * uniform_wave_sum(self.w, half_time, self.F_hat.sum(axis=1))
         X_hist = np.zeros((n_steps + 1, 12))
         if X0 is not None:
             X_hist[0] = X0
