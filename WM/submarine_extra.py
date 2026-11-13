@@ -108,7 +108,7 @@ if __name__ == "__main__":
     t, X, V = T, X_hist[:, :6], X_hist[:, 6:]
 
     # ---- sea spectrum
-    S_f, D, S_sea, a, Hs = sub.sea_spectrum()
+    S_f, _, S_sea, a, Hs = sub.sea_spectrum()
     print(f"Sea: Hs = {Hs:.2f} m, Tp = {sub.Tp:.1f} s")
 
     # ---- RAOs: on the BEM grid (plots) and at the Sea frequencies (response spectra)
@@ -131,8 +131,6 @@ if __name__ == "__main__":
     # ================================================================
     #  PLOTS
     # ================================================================
-    i_beta = np.argmin(abs(np.angle(np.exp(1j * sub.theta)))) # BEM direction nearest the mean (0 in sea.py)
-    beta_lbl = f"beta = {np.rad2deg(sub.theta[i_beta]):.0f} deg"
     t_snap = t[len(t) // 2]
     deg = 180 / np.pi
     win = (t > T_SETTLE) & (t < T_SETTLE + 300)
@@ -140,14 +138,13 @@ if __name__ == "__main__":
 
     # 1. Sea spectrum
     th_c = np.append(sub.theta, sub.theta[0] + 2 * np.pi)                          # close the circle
-    S_ft = S_f[:, None] * D[None, :]
-    S_ft = np.hstack([S_ft, S_ft[:, :1]])
+    S_ft = np.hstack([S_sea, S_sea[:, :1]])     # S(f, θ) itself: S_f x D is only right when every system shares one spectrum
     TH, FF = np.meshgrid(th_c, sub.f)
 
     fig = plt.figure(figsize=(18, 5))
     ax0 = fig.add_subplot(1, 3, 1)
     ax0.plot(sub.f, S_f)
-    ax0.set(xlabel="f (Hz)", ylabel="S(f)  (m^2/Hz)", title=f"JONSWAP spectrum, Hs = {Hs:.2f} m")
+    ax0.set(xlabel="f (Hz)", ylabel="S(f)  (m^2/Hz)", title=f"Total spectrum S(f) (sum of wave systems), Hs = {Hs:.2f} m")
 
     ax1 = fig.add_subplot(1, 3, 2, projection="polar")
     cs = ax1.contourf(TH, FF, S_ft, levels=30, cmap="viridis")
@@ -263,7 +260,7 @@ if __name__ == "__main__":
     ax2.set(xlabel="x (m)", ylabel="z (m)", title="Vertical slice y = 0: pressure + flow streamlines (incident wave)",
             ylim=(-50, 8))
 
-    # 14. Particle orbits under ONE regular wave (Tp, Hs): circles shrinking as e^{kz}
+    # 14. Particle orbits under ONE regular wave (total Hs, dominant system's Tp): circles shrinking as e^{kz}
     EXAG_O = 3
     a_reg, w_reg = Hs / 2, 2 * np.pi * sub.f_p
     k_reg = w_reg**2 / G

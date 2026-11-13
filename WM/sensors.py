@@ -431,13 +431,16 @@ def create_sensor_data(out_dir="sensor_data", t_sim=1200.0, **sub_kwargs):
              "t_s,x_m,y_m,z_m,phi_rad,theta_rad,psi_rad,x_dot,y_dot,z_dot,phi_dot,theta_dot,psi_dot")
 
     # input parameters of this run, one row (omega_range split into its two ends)
-    params = {k: v for k, v in sub.params.items() if k != "omega_range"}
+    params = {k: v for k, v in sub.params.items() if k not in ("omega_range", "systems")}
     params["omega_min"], params["omega_max"] = sub.params["omega_range"]
     params["Hs_actual"] = sub.Hs_actual
     params["t_sim"] = t_sim
     save_csv("params", [[v] for v in params.values()], ",".join(params))
+    # the sea: one row per wave system (each its own Hs/Tp/gamma/s/direction), always written - it is the only record of the sea
+    save_csv("systems", [np.array([[q[k] for k in ("Hs", "Tp", "gamma", "s", "direction")] for q in sub.systems], dtype=float)],
+             "Hs,Tp,gamma,s,direction_rad")
 
-    # sensor positions (body axes, m from O) and the sea state used
+    # sensor positions (body axes, m from O) and the realised Hs (the sea itself is in systems.csv)
     with open(f"{out_dir}/sensor_info.csv", "w") as f:
         f.write("name,r_x_m,r_y_m,r_z_m\n")
         for name, r in {**PRESSURE_SENSORS, "IMU": R_IMU, "depth gauge": R_DEPTH}.items():

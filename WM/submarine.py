@@ -48,13 +48,21 @@ class Submarine(Sea):
                 gamma=3.3, 
                 s=10, 
                 seed=42,
+                systems=None, # [dict(Hs, Tp, gamma, s, direction (rad)), ...] wave systems each with its own spectrum (see Sea);
+                              # None = one system from Hs/Tp/direction/gamma/s above
 
                 # sub params
                 depth=15.0,
                 forward_speed=0.0,
+
+                # BEM frequency grid size (None = n_freq, the old behaviour). The RAOs are smooth in omega, so the BEM
+                # does not need the sea's resolution: n_freq=400, n_bem=40 gives 400 wave components for the cost of
+                # a 40-frequency BEM solve (the excitation is interpolated onto the sea frequencies in build_excitation)
+                n_bem=None,
                 ):
 
-        super().__init__(n_freq=n_freq, n_dir=n_dir, omega_range=omega_range, Hs=Hs, Tp=Tp, direction=direction, gamma=gamma, s=s, seed=seed,)
+        super().__init__(n_freq=n_freq, n_dir=n_dir, omega_range=omega_range, Hs=Hs, Tp=Tp, direction=direction, gamma=gamma, s=s, seed=seed,
+                         systems=systems)
         
         self.depth = depth
         self.forward_speed = forward_speed
@@ -77,11 +85,12 @@ class Submarine(Sea):
         self.F_conv_history = np.zeros(6) # radiation memory from past steps, set by convolution()
         self.B_visc = np.zeros((6, 6)) # linear viscous damping, filled by build_viscous_damping()
 
-        self.bem_omegas = np.linspace(*omega_range, n_freq) # BEM frequency grid (rad/s), evenly spaced for solving hydrodynamics
+        n_bem = n_freq if n_bem is None else int(n_bem)
+        self.bem_omegas = np.linspace(*omega_range, n_bem) # BEM frequency grid (rad/s), evenly spaced for solving hydrodynamics
 
-        self.params = dict(n_freq=n_freq, n_dir=n_dir, omega_range=omega_range, Hs=Hs, Tp=Tp,
-                   direction=direction, gamma=gamma, s=s, seed=seed,
-                   depth=depth, forward_speed=forward_speed)
+        # the sea itself (Hs, Tp, gamma, s, direction) is only in systems (-> systems.csv), always the list Sea built
+        self.params = dict(n_freq=n_freq, n_bem=n_bem, n_dir=n_dir, omega_range=omega_range, seed=seed,
+                   systems=self.systems, depth=depth, forward_speed=forward_speed)
 
 
 
