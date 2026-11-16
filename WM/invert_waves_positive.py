@@ -4,7 +4,8 @@ invert_waves.py with one change: wave power cannot be negative.
 Everything else is imported unchanged from invert_waves.py (reading, Welch matrix, transfer functions, channel
 operators, Wishart noise variances, the prior N(0, (tau s)^2) and every summary), so run it exactly the same way:
 
-    python invert_waves_positive.py --data sensor_data [--model six_dof] [--plot]
+    python invert_waves_positive.py --data sensor_data [--out output] [--model six_dof] [--plot]
+Saves <out>/inversion_result_positive.npz (and .png with --plot), so it no longer overwrites the invert_waves.py result.
 
 What changes, per frequency
     invert_waves.py:     x_hat = argmin |A~ x - d~|^2 + |x|^2/(tau s)^2                (closed form, x can be < 0)
@@ -54,4 +55,5 @@ def invert(f, S, h_all, tau, M):
 
 if __name__ == "__main__":
     iw.invert = invert          # main() in invert_waves.py calls invert(); point it at this one
+    iw.RESULT = "inversion_result_positive"     # and save under its own name
     iw.main()
