@@ -9,8 +9,12 @@ invert_waves.py, and passes the identical inputs to the invert() of each script:
 So any difference between them comes from the estimator alone.
 
 Scores (truth rebuilt from sensor_data/params.csv with sea.py, as in the inverse scripts):
-    Hs, Tp                       estimate vs the true sea (Hs of the wave power realised in BAND, Tp from params)
+    Hs, Tp                       estimate vs the true sea (Hs and the peak Welch bin of the wave power realised in BAND)
     mean dir, spread, dir err    circular mean and spread of the heading distribution, and mean-direction error (deg)
+    sys<i> power/Tp/dir/spread   seas with several wave systems only: each (f, heading) cell is given to the true system
+                                 with the most power there, and power share, Tp, mean direction and spread are taken inside
+                                 each system's cells (same cells for truth and estimate). NaN = the method put < 5% of
+                                 its power there, i.e. it missed that system
     S(f) err                     relative L2 error of the frequency spectrum on the Welch bins:  ||S - S_true|| / ||S_true||
                                  (S_true = the realised line powers smeared by the Welch window, see section 2)
     D TV                         total-variation distance of the heading shares: 1/2 sum |p_j - p_true_j|  (0 = identical)
@@ -43,7 +47,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))   # .../WM/results
 REPO = os.path.dirname(HERE)                        # .../WM: invert_waves*.py, polar_plot.py, submarine.py, sea.py, sensors.py
 OUT = os.path.join(REPO, "output")                  # score table, figure and RAO cache (same folder as invert_waves.py)
 # ---------------------------------------------------------------- input data (edit this to run on another record)
-DATA_DIR = os.path.join(REPO, "..", "..", "sensor_data_states", "seastate_O_mixed", "sensordata_0")
+DATA_DIR = os.path.join(REPO, "..", "..", "sensor_data_states", "seastate_A_wind", "sensordata_0")
 # name -> (script, extra keyword arguments for its invert())
 METHODS = {
     "NNLS": ("invert_waves_positive.py", {}),
@@ -80,6 +84,36 @@ def circ_stats(share, beta):
     """circular mean and spread (deg) of a heading distribution that sums to 1"""
     c1 = np.sum(share * np.exp(1j * beta))
     return np.degrees(np.angle(c1)), np.degrees(np.sqrt(max(2 * (1 - abs(c1)), 0.0)))
+
+
+def system_masks(se, fb, beta):
+    """(n_sys, L, M) bool: which true wave system owns each (Welch bin, heading) cell = the one with the most power
+    there. Cells no system reaches (beyond every system's ±90 deg cos^2s cutoff) go to the nearest system direction.
+    With one system every cell is its own, so the per-system stats equal the whole-sea ones."""
+    E = np.stack([se._jonswap_one(fb, q["Hs"], q["Tp"], q["gamma"])[:, None]
+                  * se._cos2s(beta, q["direction"], q["s"])[None, :] for q in se.systems])
+    dirs = np.array([q["direction"] for q in se.systems])
+    nearest = np.abs(np.angle(np.exp(1j * (beta[None, :] - dirs[:, None])))).argmin(0)     # (M,)
+    owner = np.where(E.max(0) > 0, E.argmax(0), nearest[None, :])                            # (L, M)
+    return np.stack([owner == i for i in range(len(se.systems))])
+
+
+def per_system_stats(x, masks, beta, fb, min_share=0.05):
+    """power share, peak period (s), mean direction and spread (deg) of x inside each system's cells. A system holding
+    <= min_share of the power was missed, so its Tp, direction and spread are NaN (they would be noise).
+    Tp per system matters for mixed seas: their total S(f) has two peaks of similar height, so the whole-sea argmax
+    flips between the wind sea and the swell on small level errors, while each system's own peak is stable."""
+    tot = x.sum()
+    out = []
+    for m in masks:
+        xm = np.where(m, x, 0.0)
+        P = xm.sum()
+        if tot <= 0 or P <= min_share * tot:
+            out.append(dict(power=P / tot if tot > 0 else np.nan, Tp=np.nan, mdir=np.nan, spread=np.nan))
+            continue
+        mdir, spread = circ_stats(xm.sum(0) / P, beta)
+        out.append(dict(power=P / tot, Tp=1 / fb[np.argmax(xm.sum(1))], mdir=mdir, spread=spread))
+    return out
 
 
 def chi2_per_n(base, Sb, h_all, x, meff):
@@ -208,8 +242,13 @@ def build_truth(args, base, inp, verbose=True):
         x_true = x_exp * (S_real / np.maximum(x_exp.sum(1), 1e-300))[:, None]
         D = x_true.sum(0) / x_true.sum()                             # share of power per heading bin, sums to 1
         mdir_t, spread_t = circ_stats(D, beta)
+        masks = system_masks(se, fb, beta)
+        # Tp: the peak Welch bin of the realised S(f), the same definition as every estimate (1/fb[argmax S]) and the
+        # same realised level as Hs. The nominal se.Tp (the dominant system's input Tp) is the wrong reference for mixed
+        # seas: e.g. O_mixed's 8 s wind sea and 14 s swell have near-equal peaks, and in the record the 8 s one is taller
         return dict(se=se, D=D, x=x_true, S=S_real, S_jonswap=se.jonswap(fb), Hs=4 * np.sqrt(S_real.sum() * df),
-                    Hs_actual=se.Hs_actual, Tp=se.Tp, mdir=mdir_t, spread=spread_t)
+                    Hs_actual=se.Hs_actual, Tp=1 / fb[np.argmax(S_real)], Tp_nominal=se.Tp, mdir=mdir_t,
+                    spread=spread_t, masks=masks, sys=per_system_stats(x_true, masks, beta, fb, min_share=0))
     except Exception as e:
         if verbose:
             print(f"(truth comparison skipped: {e!r})")
@@ -243,6 +282,12 @@ def run_methods(names, base, inp, truth, repo=REPO, verbose=True):
                      D_tv=100 * 0.5 * np.abs(share - truth["D"]).sum(),
                      E_err=100 * np.linalg.norm(x - truth["x"]) / np.linalg.norm(truth["x"]),
                      dir_err=np.degrees(np.angle(np.exp(1j * np.radians(mdir - truth["mdir"])))))
+            for i, (s, t) in enumerate(zip(per_system_stats(x, truth["masks"], beta, fb), truth["sys"]), 1):
+                r.update({f"Tp_{i}": s["Tp"], f"mdir_{i}": s["mdir"], f"spread_{i}": s["spread"],
+                          f"power_{i}": 100 * s["power"],
+                          f"dir_err_{i}": np.degrees(np.angle(np.exp(1j * np.radians(s["mdir"] - t["mdir"])))),
+                          f"spread_err_{i}": s["spread"] - t["spread"],
+                          f"power_err_{i}": 100 * (s["power"] - t["power"])})
         results[name] = r
         if verbose:
             print(f"    done in {dt:.2f} s")
@@ -269,11 +314,19 @@ def main():
     if truth is not None:
         cols += [("dir err", "dir_err", "{:.1f}"), ("S(f) err %", "S_err", "{:.1f}"), ("D TV %", "D_tv", "{:.1f}"),
                  ("E(f,th) err %", "E_err", "{:.1f}")]
+        if len(truth["sys"]) > 1:
+            for i in range(1, len(truth["sys"]) + 1):
+                cols += [(f"sys{i} power %", f"power_{i}", "{:.0f}"), (f"sys{i} Tp", f"Tp_{i}", "{:.1f}"),
+                         (f"sys{i} dir", f"mdir_{i}", "{:.1f}"),
+                         (f"sys{i} spread", f"spread_{i}", "{:.1f}"), (f"sys{i} dir err", f"dir_err_{i}", "{:.1f}")]
     cols += [("neg %", "neg", "{:.1f}"), ("chi2/N", "chi2", "{:.2f}"), ("time (s)", "time", "{:.2f}")]
     head = f"{'method':8s}" + "".join(f"{c[0]:>14s}" for c in cols)
     print("\n" + head + "\n" + "-" * len(head))
     if truth is not None:
         tvals = {"Hs": truth["Hs"], "Tp": truth["Tp"], "mdir": truth["mdir"], "spread": truth["spread"]}
+        for i, t in enumerate(truth["sys"], 1):
+            tvals.update({f"power_{i}": 100 * t["power"], f"Tp_{i}": t["Tp"], f"mdir_{i}": t["mdir"],
+                          f"spread_{i}": t["spread"]})
         print(f"{'true':8s}" + "".join(f"{(fmt.format(tvals[k]) if k in tvals else '-'):>14s}" for _, k, fmt in cols))
     for name, r in results.items():
         print(f"{name:8s}" + "".join(f"{fmt.format(r[k]):>14s}" for _, k, fmt in cols))
@@ -283,9 +336,12 @@ def main():
         print(f"true Hs/S(f)/E(f,th) use the wave power realised in the {base.BAND[0]}-{base.BAND[1]} Hz band "
               f"(Hs {truth['Hs']:.2f} m); the expected Hs of the discretised spectrum is {truth['Hs_actual']:.2f} m "
               f"(see the comment in section 2)")
+        print(f"true Tp = peak Welch bin of the realised S(f) ({truth['Tp']:.1f} s); the nominal input Tp of the "
+              f"dominant system is {truth['Tp_nominal']:.1f} s")
         if len(truth["se"].systems) > 1:
             print(f"NOTE: the true sea has {len(truth['se'].systems)} wave systems, so 'mean dir', 'spread' and 'dir err' "
-                  f"(a vector average that can sit between the peaks) are not meaningful; judge direction by D TV and E(f,th)")
+                  f"(a vector average that can sit between the peaks) are not meaningful; judge direction by the "
+                  f"per-system sys<i> columns (each system's own cells), D TV and E(f,th). sys<i> dir NaN = system missed")
     if truth is not None:
         ranked = sorted(results, key=lambda n: results[n]["E_err"])
         print("ranked by full directional-spectrum error: " + "  <  ".join(f"{n} ({results[n]['E_err']:.0f}%)" for n in ranked))

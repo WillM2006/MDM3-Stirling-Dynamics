@@ -16,7 +16,8 @@ from sensors import create_sensor_data
 two modes, multiple seeds per run folder (sensordata_{seed} inside each folder):
   --mode states (default): 30 realistic sea states (wind / swell / mixed wind+swell / two-direction bimodal),
                            headings over 0-360 deg -> 600 runs
-  --mode sweep:            one-at-a-time sweep of each param around BASELINE
+  --mode sweep:            depth sweep: sea states SWEEP_STATES at every depth in DEPTH_VALUES, SWEEP_SEEDS seeds
+                           -> folders seastate_<name>_<type>_depth<d>
 
 WARNING  Mesh resolution for 28 problems:                                                                                                                                                          
 The resolution of the mesh might be insufficient for omega ranging from 1.854 to 2.000.                                                                                                   
@@ -34,17 +35,13 @@ T_SIM = 1200.0
 
 
 # params to test
-HS_VALUES = [0.5, 1, 1.7, 2.5, 4]
-TP_VALUES = [4.5, 6, 8, 10, 12]
-DIRECTION_VALUES = [0, np.pi/4, np.pi/2, 3*np.pi/4, np.pi]
-GAMMA_VALUES = [1, 2, 3.3, 5, 7]
-SPREAD_VALUES = [2, 5, 10, 25, 75]
-DEPTH_VALUES = [10, 15, 25, 40, 60]
+
+DEPTH_VALUES = np.linspace(10, 80, 15)
 
 SEED_VALUES = range(20)
+SWEEP_STATES = ["A", "H", "O", "BI_O"]   # --mode sweep: one wind, swell, mixed and bimodal state ...
+SWEEP_SEEDS = range(5)                         # ... at every DEPTH_VALUES depth, with these seeds
 
-# held fixed while one param at a time is varied through its list above
-BASELINE = dict(Hs=1.7, Tp=8, s=10, gamma=3.3, depth=15, direction=np.pi/2)
 
 
 # ---------------------------------------------------------------- sea states (--mode states)
@@ -118,7 +115,7 @@ def sea_state_params(state):
 
 # BEM cache: A, B, F_exc only depend on the mesh, depth, speed and the omega/theta grids (theta is always the full circle),
 # so the sea (systems) and seed all reuse the same solve - one solve per depth
-# (sweep mode: 5 solves instead of 500; states mode: depth is fixed, so 1)
+# (sweep mode: 15 solves, one per depth, instead of 300; states mode: depth is fixed, so 1)
 BEM_ATTRS = ("A", "B", "A_inf", "F_exc", "M_inv", "A_sys")
 _bem_cache = {}
 _solve_hydrodynamics = Submarine.solve_hydrodynamics
@@ -136,13 +133,9 @@ Submarine.solve_hydrodynamics = cached_solve_hydrodynamics # ControlledSubmarine
 
 
 def make_combos():
-    """one-at-a-time sweep: every param sits at BASELINE while one is varied through its list"""
-    sweeps = dict(Hs=HS_VALUES, Tp=TP_VALUES, s=SPREAD_VALUES, gamma=GAMMA_VALUES, depth=DEPTH_VALUES, direction=DIRECTION_VALUES)
-
-    combos = [BASELINE]
-    for k, values in sweeps.items():
-        combos += [{**BASELINE, k: v} for v in values if v != BASELINE[k]] # baseline value already included once
-    return combos
+    """depth sweep: (folder name, sea params) for every SWEEP_STATES state at every DEPTH_VALUES depth"""
+    return [(f"seastate_{name}_{SEA_TYPE[name]}_depth{depth:g}", dict(depth=depth, **sea_state_params(SEA_STATES[name])))
+            for name in SWEEP_STATES for depth in DEPTH_VALUES]
 
 
 # resume / progress: a run gets DONE_FLAG written only after all its csvs are saved, so a run without it
@@ -164,11 +157,8 @@ def run_list(out_root, mode="states"):
     if mode != "sweep":
         raise ValueError(f"mode must be 'states' or 'sweep', got {mode!r}")
 
-    for swept in make_combos():
-        # direction is simulated in radians but named in degrees (pi/2 -> direction90)
-        filedir = "sensordata_" + "_".join(f"{k}{round(float(np.rad2deg(v)), 3):g}" if k == "direction" else f"{k}{v}"
-                                           for k, v in swept.items())
-        for seed in SEED_VALUES:
+    for filedir, swept in make_combos():
+        for seed in SWEEP_SEEDS:
             params = dict(n_freq=N_FREQ, n_bem=N_BEM, uniform_frequencies=UNIFORM_FREQUENCIES, n_dir=N_DIR,
                           omega_range=OMEGA_RANGE, seed=seed, **swept)
             runs.append((os.path.join(out_root, filedir, f"sensordata_{seed}"), params))
@@ -211,17 +201,17 @@ def print_status(runs, out_root):
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Sensor data generation: 30 sea states (default) or the one-at-a-time sweep. "
+    ap = argparse.ArgumentParser(description="Sensor data generation: 30 sea states (default) or the depth sweep. "
                                              "Re-running resumes: finished runs are skipped, interrupted ones are redone.")
     ap.add_argument("--mode", choices=("states", "sweep"), default="states",
-                    help="states: 30 wind / swell / mixed / bimodal sea states (600 runs); sweep: one-at-a-time sweep (500 runs)")
+                    help="states: 30 wind / swell / mixed / bimodal sea states (600 runs); sweep: sea states A/H/O/BI_O at 15 depths from 10-80 m, 5 seeds each (300 runs)")
     ap.add_argument("--out", default=None, help="new folder for the dataset "
-                                                "(default: sensor_data_states, or sensor_data_dense for --mode sweep)")
+                                                "(default: sensor_data_states, or sensor_data_depth for --mode sweep)")
     ap.add_argument("--status", action="store_true", help="only show progress, don't run anything")
     ap.add_argument("--force", action="store_true", help="redo every run, including finished ones")
     args = ap.parse_args()
     if args.out is None:
-        args.out = "sensor_data_dense" if args.mode == "sweep" else "sensor_data_states"
+        args.out = "sensor_data_depth" if args.mode == "sweep" else "sensor_data_states"
 
     runs = run_list(args.out, args.mode)
     todo = [(d, p) for d, p in runs if args.force or not is_done(d)]

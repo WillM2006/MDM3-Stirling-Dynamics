@@ -35,7 +35,7 @@ SETTLE = 300.0            # s discarded at the start (same as T_SETTLE in submar
 FS = 2.0                  # Hz, common sample rate after low-pass filtering (waves are below 0.32 Hz)
 SEG = 200.0               # s per Welch segment
 M_EFF = 2.5               # independent pieces averaged per Welch bin (about 2.5 lines for 200 s segments)
-TAU = 5.0                 # prior width in units of s (the scale of power per Hz). Set by hand. With the full channel set the
+TAU = 0.1                 # prior width in units of s (the scale of power per Hz). Set by hand. With the full channel set the
                           # answer barely moves for TAU between 1 and 30; with few channels it matters much more.
 RESULT = "inversion_result"   # output file name (.npz/.png); scripts that swap in another invert() overwrite it too
 
