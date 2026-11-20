@@ -3,8 +3,8 @@ True vs estimated Hs, Tp, directional spread and mean direction for every method
 
 For each run folder (sensor_data_states/seastate_*/sensordata_*, with done.flag) this reuses prepare(), build_truth()
 and run_methods() from compare_methods.py, so each method sees exactly the inputs it does there. Per-run numbers are
-cached in WM/output/inversion_runs[_tag].csv; re-running resumes (use --force to redo everything, --plot-only to just
-redraw). plot_depth_errors.py uses the same runner and cache for the depth study.
+cached in WM/output/data/inversion_runs[_tag].csv; re-running resumes (use --force to redo everything, --plot-only to
+just redraw). plot_depth_errors.py uses the same runner and cache for the depth study.
 
     python plot_param_errors.py                          # all runs, all methods
     python plot_param_errors.py --jobs 6                 # parallel over runs
@@ -12,8 +12,10 @@ redraw). plot_depth_errors.py uses the same runner and cache for the depth study
     python plot_param_errors.py --limit 3                # the first 3 seeds per sea state (quick look)
     python plot_param_errors.py --plot-only
 
-Figure (WM/output/plot_param_errors[_tag].png): rows = Hs, Tp, spread, mean direction; columns = methods. One point per
-run, coloured and shaped by sea type; the black dashed line is estimate = truth.
+Figure (WM/output/images/plot_param_errors[_tag].png): rows = Hs, Tp, spread, mean direction; columns = methods. One
+point per run, coloured and shaped by sea type; the black dashed line is estimate = truth. The axes are the values
+themselves (m, s, deg); the bias and RMSE printed in each panel are of the signed % error 100 (estimate - truth) / truth
+for Hs, Tp and spread, and in deg for mean direction (the one error not expressed in %).
 
 Tp, spread and mean direction are PER WAVE SYSTEM. For seas with more than one system the whole-sea values mislead:
 the mean direction is a vector average that can sit between the peaks, and Tp = argmax of the total S(f) flips between
@@ -40,7 +42,7 @@ sys.path.insert(0, HERE)
 import compare_methods as cm  # noqa: E402
 
 ROOT = os.path.join(cm.REPO, "..", "..", "sensor_data_states")
-CACHE = "inversion_runs"                                           # WM/output/<CACHE>[_tag].csv
+CACHE = "inversion_runs"                                           # WM/output/data/<CACHE>[_tag].csv
 KINDS = ["wind", "swell", "mixed", "bimodal"]                       # sea type = last word of the state name
 PARAMS = [("Hs", "Hs (m)"), ("Tp", "Tp (s)"), ("spread", "directional spread (deg)"), ("mdir", "mean direction (deg)")]
 NSYS = 2                                                           # wave systems per sea stored (create_data makes <= 2)
@@ -65,8 +67,10 @@ def wrap(a):
 
 
 def method_fields(names):
-    return [f"{n}_{p}" for n in names for p, _ in PARAMS] + [f"{n}_{q}_{i}" for n in names
-                                                            for i in range(1, NSYS + 1) for q in SYS]
+    """per-method columns: the PARAMS, the per-system SYS stats and E_err (relative L2 error of E(f, heading), %)"""
+    return ([f"{n}_{p}" for n in names for p, _ in PARAMS]
+            + [f"{n}_{q}_{i}" for n in names for i in range(1, NSYS + 1) for q in SYS]
+            + [f"{n}_E_err" for n in names])
 
 
 def system_values(col, prefix, p):
@@ -75,6 +79,8 @@ def system_values(col, prefix, p):
 
 
 def read_rows(out_csv):
+    if not os.path.exists(out_csv):
+        raise SystemExit(f"no run cache {out_csv}; run without --plot-only to invert the runs first")
     with open(out_csv) as fh:
         rows = list(csv.DictReader(fh))
     if not rows:
@@ -118,11 +124,62 @@ def one_run(state, run_dir, names, args_dict):
         t = truth["sys"][i - 1] if i <= n_sys else {}
         row.update({f"true_{q}_{i}": (100 * t["power"] if q == "power" else t[q]) if t else float("nan") for q in SYS})
     for n, r in res.items():
+        row[f"{n}_E_err"] = r["E_err"]
         for p, _ in PARAMS:
             row[f"{n}_{p}"] = r[p]
         for i in range(1, NSYS + 1):
             row.update({f"{n}_{q}_{i}": r.get(f"{q}_{i}", float("nan")) for q in SYS})
     return row
+
+
+def load_rao_cache(repo, cache, use_controller, depth, grid):
+    """worker for build_rao_caches: load or build+save one transfer-function cache. Returns nothing, so the arrays are
+    not pickled back to the parent"""
+    cm.import_base(repo).load_rao(repo, cache, use_controller=use_controller, depth=depth, grid=grid)
+
+
+def build_rao_caches(args, todo):
+    """load or build every transfer-function cache the runs in todo need, once per cache and before any run starts.
+    Without this, parallel runs at a depth with no cache each solve the same BEM (minutes) and write the same .npz at
+    the same time. Caches are built in parallel across depths (up to --jobs at once). Returns the run folders whose
+    cache could not be built, so the caller can leave them out instead of each one retrying the build."""
+    if args.model != "capytaine":                                     # six_dof transfer functions: analytic, no cache
+        return set()
+    base = cm.import_base(args.repo)
+    need = {}                                                         # cache path -> (depth, grid, [run folders])
+    for _, d in todo:
+        depth, grid, cache = cm.rao_source(args, base, base.read_params(d))
+        if cache in need and need[cache][1] != grid:
+            raise SystemExit(f"runs at depth {depth:g} m use different grids ({need[cache][1]} and {grid}), but share "
+                             f"the cache {cache}; split them into separate --out folders")
+        need.setdefault(cache, (depth, grid, []))[2].append(d)
+    missing = sorted(dep for c, (dep, _, _) in need.items() if not os.path.exists(c))
+    print(f"transfer functions for {len(need)} depth(s); "
+          + (f"building {len(missing)} with no cache (minutes each): {missing} m" if missing else "all cached"))
+    os.makedirs(args.out, exist_ok=True)
+    jobs = [(c, dep, grid) for c, (dep, grid, _) in need.items()]
+    failed = set()
+
+    def fail(c, dep, e):
+        print(f"transfer functions for depth {dep:g} m: FAILED {e!r}; its {len(need[c][2])} run(s) are skipped")
+        failed.update(need[c][2])
+
+    if args.jobs > 1 and len(missing) > 1:                            # else just load (cheap) in this process
+        with ProcessPoolExecutor(min(args.jobs, len(jobs))) as ex:
+            futs = {ex.submit(load_rao_cache, args.repo, c, not args.no_controller, dep, grid): (c, dep)
+                    for c, dep, grid in jobs}
+            for fu in as_completed(futs):
+                try:
+                    fu.result()
+                except Exception as e:
+                    fail(*futs[fu], e)
+    else:
+        for c, dep, grid in jobs:
+            try:
+                load_rao_cache(args.repo, c, not args.no_controller, dep, grid)
+            except Exception as e:
+                fail(c, dep, e)
+    return failed
 
 
 def run_all(args, names, out_csv):
@@ -139,6 +196,10 @@ def run_all(args, names, out_csv):
                 args.force = True
     todo = [(s, d) for s, d in find_runs(args.root, args.states, args.limit) if (s, os.path.basename(d)) not in done]
     print(f"{len(done)} runs cached, {len(todo)} to invert with {names}")
+    if not todo:
+        return
+    failed = build_rao_caches(args, todo)                            # once per depth, before the runs share them
+    todo = [(s, d) for s, d in todo if d not in failed]
     if not todo:
         return
     mode = "w" if args.force or not done else "a"
@@ -192,7 +253,7 @@ def cli(doc, root, tag=""):
     if bad:
         raise SystemExit(f"unknown method(s) {bad}; choose from {list(cm.METHODS)}")
     os.makedirs(args.out, exist_ok=True)
-    out_csv = os.path.join(args.out, CACHE + (f"_{args.tag}" if args.tag else "") + ".csv")
+    out_csv = cm.out_file(args.out, "data", CACHE + (f"_{args.tag}" if args.tag else "") + ".csv")
     if not args.plot_only:
         cm.import_base(args.repo)
         run_all(args, names, out_csv)
@@ -239,8 +300,13 @@ def plot_param_errors(out_csv, names, out_png):
                 if m.any():
                     ax.scatter(t[m], e[m], s=22, marker=mk, alpha=0.75, zorder=2, linewidths=1, color=c)
             ok = np.isfinite(e)
-            err = wrap(e[ok] - t[ok]) if p == "mdir" else e[ok] - t[ok]
-            stats = f"bias {np.mean(err):+.2f}\nRMSE {np.sqrt(np.mean(err ** 2)):.2f}" if ok.any() else "no estimates"
+            if p == "mdir":                                             # degrees: the one error not in %
+                err, unit = wrap(e[ok] - t[ok]), " deg"
+            else:                                                       # signed % of the truth
+                err, unit = cm.rel_err(e[ok], t[ok]), " %"
+                err = err[np.isfinite(err)]
+            stats = (f"bias {np.mean(err):+.1f}{unit}\nRMSE {np.sqrt(np.mean(err ** 2)):.1f}{unit}" if err.size
+                     else "no estimates")
             if p in PER_SYSTEM and (~ok).any():
                 stats += f"\n{(~ok).sum()} system(s) missed"
             ax.text(0.03, 0.97, stats, transform=ax.transAxes, va="top", fontsize=8, color="0.25")
@@ -266,7 +332,7 @@ def plot_param_errors(out_csv, names, out_png):
 def main():
     args, names, out_csv = cli(__doc__, ROOT)
     if not args.no_plot:
-        png = os.path.join(args.out, "plot_param_errors" + (f"_{args.tag}" if args.tag else "") + ".png")
+        png = cm.out_file(args.out, "images", "plot_param_errors" + (f"_{args.tag}" if args.tag else "") + ".png")
         plot_param_errors(out_csv, names, png)
 
 

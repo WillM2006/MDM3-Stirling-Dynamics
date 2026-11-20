@@ -6,7 +6,7 @@ operators, Wishart noise variances and every summary), so run it exactly the sam
 
     python invert_waves_mem.py --data sensor_data [--model six_dof] [--plot]
     python invert_waves_mem.py --dchi2 10              # looser fit = smoother spectrum
-Saves output/inversion_result_mem.npz (and .png with --plot).
+Saves output/data/inversion_result_mem.npz (and output/images/inversion_result_mem.png with --plot).
 
 What changes, per frequency
     invert_waves.py:  x_hat = argmin |A~ x - d~|^2 + |x|^2/(tau s)^2                       (closed form, x can be < 0)

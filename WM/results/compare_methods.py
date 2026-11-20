@@ -10,6 +10,8 @@ So any difference between them comes from the estimator alone.
 
 Scores (truth rebuilt from sensor_data/params.csv with sea.py, as in the inverse scripts):
     Hs, Tp                       estimate vs the true sea (Hs and the peak Welch bin of the wave power realised in BAND)
+    Hs/Tp/spread err %           signed relative errors 100 (estimate - truth) / truth (the error convention used in
+                                 every results script; mean direction is the exception, in deg)
     mean dir, spread, dir err    circular mean and spread of the heading distribution, and mean-direction error (deg)
     sys<i> power/Tp/dir/spread   seas with several wave systems only: each (f, heading) cell is given to the true system
                                  with the most power there, and power share, Tp, mean direction and spread are taken inside
@@ -25,14 +27,17 @@ Scores (truth rebuilt from sensor_data/params.csv with sea.py, as in the inverse
 
 Lives in WM/results; the method scripts, invert_waves.py, polar_plot.py, sea.py etc. stay one folder up in WM. Reads
 DATA_DIR below (or --data) and writes to WM/output, the folder invert_waves.py uses, so it shares the RAO cache
-(WM/output/rao_cache_depth<D>.npz). Works from any folder:
+(WM/output/cache/rao_cache_depth<D>.npz). WM/output is split into images/ (.png), data/ (.csv, .npz) and cache/ (RAO
+caches), see out_file() and invert_waves.output_path(). Works from any folder:
     python compare_methods.py
     python compare_methods.py --data path/to/sensordata_0
     python compare_methods.py --methods NNLS,MEM              # a subset
     python compare_methods.py --model six_dof                 # transfer functions from six_dof.py
     python compare_methods.py --t-max 300                     # only the first 300 s of the record
-Saves WM/output/compare_methods.csv (the score table) and .png  (compare_methods_<tag>.* with --tag <tag>).
-prepare(), build_truth() and run_methods() are reused by plot_results.py.
+Saves WM/output/data/compare_methods.csv (the score table) and WM/output/images/compare_methods.png
+(compare_methods_<tag>.* with --tag <tag>).
+prepare(), build_truth() and run_methods() are reused by plot_param_errors.py (and so plot_depth_errors.py) and
+compare_methods_cutoff.py.
 """
 import argparse
 import csv
@@ -45,9 +50,11 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))   # .../WM/results
 REPO = os.path.dirname(HERE)                        # .../WM: invert_waves*.py, polar_plot.py, submarine.py, sea.py, sensors.py
-OUT = os.path.join(REPO, "output")                  # score table, figure and RAO cache (same folder as invert_waves.py)
+OUT = os.path.join(REPO, "output")                  # score tables, figures and RAO caches (same folder as invert_waves.py)
+OUT_KINDS = ("images", "data", "cache")             # OUT's subfolders: .png / .csv and .npz results / RAO caches
 # ---------------------------------------------------------------- input data (edit this to run on another record)
-DATA_DIR = os.path.join(REPO, "..", "..", "sensor_data_states", "seastate_A_wind", "sensordata_0")
+# DATA_DIR = os.path.join(REPO, "..", "..", "sensor_data_states", "seastate_A_wind", "sensordata_0")
+DATA_DIR = os.path.join(REPO, "..", "..", "sensor_data_depth", "seastate_A_wind_depth35", "sensordata_0")
 # name -> (script, extra keyword arguments for its invert())
 METHODS = {
     "NNLS": ("invert_waves_positive.py", {}),
@@ -58,6 +65,28 @@ METHODS = {
 # is never colour alone; the truth is always black dashed
 COLOURS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300"]
 MARKERS = ["o", "s", "^", "D", "v", "P"]
+
+
+def out_file(out, kind, name):
+    """<out>/<kind>/<name>, creating the folder; kind in OUT_KINDS (same layout as invert_waves.output_path - keep the
+    two in sync). A data file still at the old flat location <out>/<name> (an --out folder from before the split, e.g.
+    the run caches inversion_runs*.csv / cutoff_*.csv, which take a full re-inversion to rebuild) is moved into
+    <out>/data first, so it is found and resumed instead of silently redone. Only call this in the parent process."""
+    if kind not in OUT_KINDS:
+        raise ValueError(f"unknown output kind {kind!r}; use one of {OUT_KINDS}")
+    os.makedirs(os.path.join(out, kind), exist_ok=True)
+    new, old = os.path.join(out, kind, name), os.path.join(out, name)
+    if kind == "data" and not os.path.exists(new) and os.path.isfile(old):
+        os.replace(old, new)
+        print(f"moved {old} -> {new} (output folder layout: images/, data/, cache/)")
+    return new
+
+
+def rel_err(est, true):
+    """signed relative error in %, 100 (est - true) / true; NaN where the truth is 0 or missing"""
+    est, true = np.asarray(est, float), np.asarray(true, float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        return np.where(np.isfinite(true) & (true != 0), 100 * (est - true) / np.where(true != 0, true, 1), np.nan)
 
 
 def load_script(repo, fname):
@@ -161,6 +190,14 @@ def import_base(repo):
 
 
 # ---------------------------------------------------------------- 1. inputs, built once with invert_waves.py's helpers
+def rao_source(args, base, params):
+    """(depth, grid, cache path) of the transfer functions for a record with these params.csv values: the same
+    cache invert_waves.py uses, <out>/cache/rao_cache_depth<D>.npz (or an old flat <out>/rao_cache_depth<D>.npz)"""
+    depth = params.get("depth", 15.0)
+    grid = base.grid_kwargs(params) if params else {}                 # as invert_waves.main()
+    return depth, grid, base.rao_cache_path(args.out, depth)
+
+
 def prepare(args, base, rao=None, verbose=True):
     """everything invert() needs, for the record in args.data. rao: transfer functions already loaded (else read
     from the cache in args.out, or built). Returns a dict (fb, Sb, df, h_all, beta, params, grid, seg, tau, meff, ...)"""
@@ -168,11 +205,9 @@ def prepare(args, base, rao=None, verbose=True):
     tau = base.TAU if args.tau is None else args.tau
     meff = base.M_EFF if args.meff is None else args.meff
     params = base.read_params(args.data)
-    depth = params.get("depth", 15.0)
-    grid = base.grid_kwargs(params) if params else {}                 # as invert_waves.main()
+    depth, grid, cache = rao_source(args, base, params)
     if rao is None:
         os.makedirs(args.out, exist_ok=True)
-        cache = os.path.join(args.out, f"rao_cache_depth{depth:g}.npz")  # the same cache invert_waves.py uses
         rao = (base.six_dof_rao(args.repo, depth, grid) if args.model == "six_dof"
                else base.load_rao(args.repo, cache, use_controller=not args.no_controller, depth=depth, grid=grid))
     wg, beta = rao["omega"], rao["theta"]
@@ -281,13 +316,17 @@ def run_methods(names, base, inp, truth, repo=REPO, verbose=True):
             r.update(S_err=100 * np.linalg.norm(Sf - truth["S"]) / np.linalg.norm(truth["S"]),
                      D_tv=100 * 0.5 * np.abs(share - truth["D"]).sum(),
                      E_err=100 * np.linalg.norm(x - truth["x"]) / np.linalg.norm(truth["x"]),
-                     dir_err=np.degrees(np.angle(np.exp(1j * np.radians(mdir - truth["mdir"])))))
+                     Hs_err=float(rel_err(r["Hs"], truth["Hs"])),            # signed %, as every results script
+                     Tp_err=float(rel_err(r["Tp"], truth["Tp"])),
+                     spread_err=float(rel_err(spread, truth["spread"])),
+                     dir_err=np.degrees(np.angle(np.exp(1j * np.radians(mdir - truth["mdir"])))))   # deg (exception)
             for i, (s, t) in enumerate(zip(per_system_stats(x, truth["masks"], beta, fb), truth["sys"]), 1):
                 r.update({f"Tp_{i}": s["Tp"], f"mdir_{i}": s["mdir"], f"spread_{i}": s["spread"],
                           f"power_{i}": 100 * s["power"],
+                          f"Tp_err_{i}": float(rel_err(s["Tp"], t["Tp"])),               # %
                           f"dir_err_{i}": np.degrees(np.angle(np.exp(1j * np.radians(s["mdir"] - t["mdir"])))),
-                          f"spread_err_{i}": s["spread"] - t["spread"],
-                          f"power_err_{i}": 100 * (s["power"] - t["power"])})
+                          f"spread_err_{i}": float(rel_err(s["spread"], t["spread"])),   # %
+                          f"power_err_{i}": 100 * (s["power"] - t["power"])})            # percentage points
         results[name] = r
         if verbose:
             print(f"    done in {dt:.2f} s")
@@ -312,26 +351,32 @@ def main():
     cols = [("Hs (m)", "Hs", "{:.2f}"), ("Tp (s)", "Tp", "{:.1f}"), ("mean dir", "mdir", "{:.1f}"),
             ("spread", "spread", "{:.1f}")]
     if truth is not None:
-        cols += [("dir err", "dir_err", "{:.1f}"), ("S(f) err %", "S_err", "{:.1f}"), ("D TV %", "D_tv", "{:.1f}"),
-                 ("E(f,th) err %", "E_err", "{:.1f}")]
+        cols += [("Hs err %", "Hs_err", "{:+.1f}"), ("Tp err %", "Tp_err", "{:+.1f}"),
+                 ("spread err %", "spread_err", "{:+.1f}"), ("dir err (deg)", "dir_err", "{:+.1f}"),
+                 ("S(f) err %", "S_err", "{:.1f}"), ("D TV %", "D_tv", "{:.1f}"), ("E(f,th) err %", "E_err", "{:.1f}")]
         if len(truth["sys"]) > 1:
             for i in range(1, len(truth["sys"]) + 1):
                 cols += [(f"sys{i} power %", f"power_{i}", "{:.0f}"), (f"sys{i} Tp", f"Tp_{i}", "{:.1f}"),
-                         (f"sys{i} dir", f"mdir_{i}", "{:.1f}"),
-                         (f"sys{i} spread", f"spread_{i}", "{:.1f}"), (f"sys{i} dir err", f"dir_err_{i}", "{:.1f}")]
+                         (f"sys{i} dir", f"mdir_{i}", "{:.1f}"), (f"sys{i} spread", f"spread_{i}", "{:.1f}"),
+                         (f"sys{i} Tp err %", f"Tp_err_{i}", "{:+.1f}"),
+                         (f"sys{i} spread err %", f"spread_err_{i}", "{:+.1f}"),
+                         (f"sys{i} dir err (deg)", f"dir_err_{i}", "{:+.1f}")]
     cols += [("neg %", "neg", "{:.1f}"), ("chi2/N", "chi2", "{:.2f}"), ("time (s)", "time", "{:.2f}")]
-    head = f"{'method':8s}" + "".join(f"{c[0]:>14s}" for c in cols)
+    width = [max(14, len(c[0]) + 1) for c in cols]                   # long labels widen their own column
+    head = f"{'method':8s}" + "".join(f"{c[0]:>{w}s}" for c, w in zip(cols, width))
     print("\n" + head + "\n" + "-" * len(head))
     if truth is not None:
         tvals = {"Hs": truth["Hs"], "Tp": truth["Tp"], "mdir": truth["mdir"], "spread": truth["spread"]}
         for i, t in enumerate(truth["sys"], 1):
             tvals.update({f"power_{i}": 100 * t["power"], f"Tp_{i}": t["Tp"], f"mdir_{i}": t["mdir"],
                           f"spread_{i}": t["spread"]})
-        print(f"{'true':8s}" + "".join(f"{(fmt.format(tvals[k]) if k in tvals else '-'):>14s}" for _, k, fmt in cols))
+        print(f"{'true':8s}" + "".join(f"{(fmt.format(tvals[k]) if k in tvals else '-'):>{w}s}"
+                                       for (_, k, fmt), w in zip(cols, width)))
     for name, r in results.items():
-        print(f"{name:8s}" + "".join(f"{fmt.format(r[k]):>14s}" for _, k, fmt in cols))
-    print("\nerrors: lower is better (0 = perfect). D TV = % of the heading distribution in the wrong place. "
-          "chi2/N near 1 = fits the cross-spectra to within the Wishart noise.")
+        print(f"{name:8s}" + "".join(f"{fmt.format(r[k]):>{w}s}" for (_, k, fmt), w in zip(cols, width)))
+    print("\nunsigned errors (S(f), D TV, E(f,th)): lower is better, 0 = perfect. Signed errors (Hs/Tp/spread err %, "
+          "dir err in deg; + = estimate too high): closer to 0 is better. D TV = % of the heading distribution in the "
+          "wrong place. chi2/N near 1 = fits the cross-spectra to within the Wishart noise.")
     if truth is not None:
         print(f"true Hs/S(f)/E(f,th) use the wave power realised in the {base.BAND[0]}-{base.BAND[1]} Hz band "
               f"(Hs {truth['Hs']:.2f} m); the expected Hs of the discretised spectrum is {truth['Hs_actual']:.2f} m "
@@ -346,19 +391,20 @@ def main():
         ranked = sorted(results, key=lambda n: results[n]["E_err"])
         print("ranked by full directional-spectrum error: " + "  <  ".join(f"{n} ({results[n]['E_err']:.0f}%)" for n in ranked))
 
-    os.makedirs(args.out, exist_ok=True)
-    out = os.path.join(args.out, "compare_methods" + (f"_{args.tag}" if args.tag else ""))
-    with open(out + ".csv", "w", newline="") as fh:
+    stem = "compare_methods" + (f"_{args.tag}" if args.tag else "")
+    out_csv = out_file(args.out, "data", stem + ".csv")
+    with open(out_csv, "w", newline="") as fh:
         wr = csv.writer(fh)
         wr.writerow(["method"] + [c[0] for c in cols])
         if truth is not None:
             wr.writerow(["true"] + [f"{tvals[k]:.4g}" if k in tvals else "" for _, k, _ in cols])
         for name, r in results.items():
             wr.writerow([name] + [f"{r[k]:.4g}" for _, k, _ in cols])
-    print(f"saved {out}.csv")
+    print(f"saved {out_csv}")
 
     if args.no_plot:
         return
+    out_png = out_file(args.out, "images", stem + ".png")
 
     # ---------------------------------------------------------------- 5. figure
     import matplotlib.pyplot as plt
@@ -393,7 +439,7 @@ def main():
 
     ax3 = fig.add_subplot(gs[0, 2])                                  # error summary
     if truth is not None:
-        metrics = [("|Hs err|", lambda r: 100 * abs(r["Hs"] - truth["Hs"]) / truth["Hs"]),
+        metrics = [("|Hs err|", lambda r: abs(r["Hs_err"])),
                    ("S(f) err", lambda r: r["S_err"]), ("D TV", lambda r: r["D_tv"]), ("E(f,θ) err", lambda r: r["E_err"])]
         bw = 0.8 / len(results)
         for i, (name, r) in enumerate(results.items()):
@@ -421,8 +467,8 @@ def main():
         map_axes.append(a)
     fig.colorbar(im, ax=map_axes, label="power per Hz per heading bin  (m$^2$/Hz)\n(angle = heading, radius = f in Hz)",
                  extend="both", shrink=0.8)
-    fig.savefig(out + ".png", dpi=130, bbox_inches="tight")
-    print(f"saved {out}.png")
+    fig.savefig(out_png, dpi=130, bbox_inches="tight")
+    print(f"saved {out_png}")
 
 
 if __name__ == "__main__":

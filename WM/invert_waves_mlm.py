@@ -7,7 +7,7 @@ operators and every summary), so run it exactly the same way, plus --load / --it
     python invert_waves_mlm.py --data sensor_data [--model six_dof] [--plot]
     python invert_waves_mlm.py --iter 20 --plot        # IMLM
     python invert_waves_mlm.py --load 1e-2             # more diagonal loading = smoother, more robust
-Saves output/inversion_result_mlm.npz (and .png with --plot).
+Saves output/data/inversion_result_mlm.npz (and output/images/inversion_result_mlm.png with --plot).
 
 What changes, per frequency
     invert_waves.py:  fit d = A x (real/imag parts of the cross-spectra) with a Gaussian prior        (closed form)

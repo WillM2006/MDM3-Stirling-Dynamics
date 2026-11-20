@@ -9,12 +9,13 @@ Method (derivation in minimal_bayes_inversion.md), applied independently at each
     result   x_hat = (A' S^-1 A + I/(TAU s)^2)^-1 A' S^-1 d,   covariance = (A' S^-1 A + I/(TAU s)^2)^-1
 
 Run from the folder that holds submarine.py, sea.py, sensors.py and submarine_extra.py:
-    python invert_waves.py                       # reads ./sensor_data, builds/loads output/rao_cache_depth<D>.npz
+    python invert_waves.py                       # reads ./sensor_data, builds/loads output/cache/rao_cache_depth<D>.npz
     python invert_waves.py --tau 5 --plot
     python invert_waves.py --model six_dof       # transfer functions from six_dof.py (needs waves.py) instead of Capytaine
 First run solves the BEM problem (a few minutes) and caches the RAOs; later runs load the cache.
 Depth, grid and seed come from sensor_data/params.csv, the true sea from sensor_data/systems.csv. Results, plots and
-the RAO cache go to --out (default ./output).
+the RAO cache go to --out (default ./output): <out>/data/inversion_result.npz, <out>/images/inversion_result.png and
+<out>/cache/rao_cache_depth<D>.npz (see output_path / rao_cache_path).
 
 Conventions (taken from sensors.py / submarine.py): x forward, y to port, z up; beta is the direction the waves
 TRAVEL towards (beta = 0: towards +x); phasors are Re{X exp(-i w t)}; roll/pitch/yaw angles in rad.
@@ -38,6 +39,35 @@ M_EFF = 2.5               # independent pieces averaged per Welch bin (about 2.5
 TAU = 0.1                 # prior width in units of s (the scale of power per Hz). Set by hand. With the full channel set the
                           # answer barely moves for TAU between 1 and 30; with few channels it matters much more.
 RESULT = "inversion_result"   # output file name (.npz/.png); scripts that swap in another invert() overwrite it too
+
+
+# ------------------------------------------------------------------ output folder layout (shared with WM/results)
+# --out (default ./output) is split by kind:  images/ = figures (.png),  data/ = results and score tables (.npz/.csv),
+# cache/ = RAO caches (rao_cache_depth<D>.npz, a BEM solve each, reused across runs)
+def output_path(out, kind, name):
+    """<out>/<kind>/<name>, creating the <out>/<kind> folder (kind: images, data or cache)"""
+    if kind not in ("images", "data", "cache"):
+        raise ValueError(f"unknown output kind {kind!r}")
+    folder = os.path.join(out, kind)
+    os.makedirs(folder, exist_ok=True)
+    return os.path.join(folder, name)
+
+
+def rao_cache_path(out, depth):
+    """the RAO cache for this depth: <out>/cache/rao_cache_depth<D>.npz. A cache only at the old flat location
+    <out>/rao_cache_depth<D>.npz (before the cache/ folder) is moved into cache/, so it is not re-solved (minutes) and
+    a rebuild lands in cache/ too. Safe when several processes ask at once (only one move succeeds)."""
+    name = f"rao_cache_depth{depth:g}.npz"
+    new, old = os.path.join(out, "cache", name), os.path.join(out, name)
+    os.makedirs(os.path.dirname(new), exist_ok=True)
+    if not os.path.exists(new) and os.path.isfile(old):
+        try:
+            os.replace(old, new)
+            print(f"moved {old} -> {new} (output folder layout: images/, data/, cache/)")
+        except OSError:                                   # another process moved it first, or it is in use:
+            if not os.path.exists(new):                   # fall back to reading it where it is
+                return old
+    return new
 
 
 # ------------------------------------------------------------------ 1. transfer functions (frequency-domain model)
@@ -282,8 +312,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--data", default="sensor_data")
     ap.add_argument("--repo", default=os.path.dirname(os.path.abspath(__file__)) if os.path.exists(os.path.join(os.path.dirname(os.path.abspath(__file__)), "submarine.py")) else os.getcwd())
-    ap.add_argument("--cache", default=None, help="default <out>/rao_cache_depth<D>.npz")
-    ap.add_argument("--out", default="output", help="folder for the results, plots and RAO cache")
+    ap.add_argument("--cache", default=None, help="default <out>/cache/rao_cache_depth<D>.npz")
+    ap.add_argument("--out", default="output", help="folder for the results (data/), plots (images/) and RAO cache (cache/)")
     ap.add_argument("--tau", type=float, default=TAU)
     ap.add_argument("--meff", type=float, default=M_EFF)
     ap.add_argument("--channels", default=",".join(CHANNELS))
@@ -298,7 +328,7 @@ def main():
     depth = params.get("depth", 15.0)
     grid = grid_kwargs(params) if params else {}          # no params.csv: Submarine defaults, as before
     os.makedirs(args.out, exist_ok=True)
-    cache = args.cache or os.path.join(args.out, f"rao_cache_depth{depth:g}.npz")
+    cache = args.cache or rao_cache_path(args.out, depth)
     rao = six_dof_rao(args.repo, depth, grid) if args.model == "six_dof" else load_rao(args.repo, cache, use_controller=not args.no_controller, depth=depth, grid=grid)
     wg, beta = rao["omega"], rao["theta"]
     consts = (float(rao["rho"]), float(rao["g"]), float(rao["depth"]))
@@ -371,8 +401,9 @@ def main():
         obs = Sb[:, c, c].real.sum() * df
         print(f"  {ch:9s} data {obs:10.3e}   fit {fit_diag[:, c].sum() * df:10.3e}   ratio {fit_diag[:, c].sum() * df / obs:5.2f}")
 
-    np.savez(os.path.join(args.out, RESULT + ".npz"), f=fb, x=x, cov=cov, beta=beta, Hs=hs, sd_Hs=sd_hs, channels=channels)
-    print(f"\nsaved {os.path.join(args.out, RESULT + '.npz')}  (x[f, heading] = wave power per Hz)")
+    result_npz = output_path(args.out, "data", RESULT + ".npz")
+    np.savez(result_npz, f=fb, x=x, cov=cov, beta=beta, Hs=hs, sd_Hs=sd_hs, channels=channels)
+    print(f"\nsaved {result_npz}  (x[f, heading] = wave power per Hz)")
 
     if args.plot:
         import matplotlib.pyplot as plt
@@ -396,8 +427,9 @@ def main():
         fig.colorbar(im, ax=ax[2], label="power per Hz", pad=0.1)
         ax[2].set_title("Estimated directional spectrum\n(angle = heading, radius = f in Hz)", fontsize=10)
         fig.tight_layout()
-        fig.savefig(os.path.join(args.out, RESULT + ".png"), dpi=130)
-        print(f"saved {os.path.join(args.out, RESULT + '.png')}")
+        result_png = output_path(args.out, "images", RESULT + ".png")
+        fig.savefig(result_png, dpi=130)
+        print(f"saved {result_png}")
 
 
 if __name__ == "__main__":
